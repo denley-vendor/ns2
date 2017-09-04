@@ -1,0 +1,960 @@
+
+<!-- saved from url=(0104)file:///E:/Today/Tcpdump%20%E7%9A%84%E8%AF%A6%E7%BB%86%E7%94%A8%E6%B3%95_%E9%98%BF%E7%8B%BC%E5%93%A5.htm -->
+<HTML><HEAD><META http-equiv="Content-Type" content="text/html; charset=GB2312"><TITLE>Tcpdump 的详细用法_阿狼哥      </TITLE>
+<STYLE type="text/css">
+.error{color:#FF0000;font-size:12px}
+
+
+	
+
+
+</STYLE>
+<SCRIPT type="text/javascript" src="./Tcpdump详细用法_files/global.js"></SCRIPT>
+<SCRIPT language="javascript" src="./Tcpdump详细用法_files/popup.js"></SCRIPT>
+<SCRIPT type="text/javascript" src="./Tcpdump详细用法_files/BdEditor-mined.js"></SCRIPT>
+<SCRIPT language="JavaScript" src="./Tcpdump详细用法_files/g_spjs.js"></SCRIPT>
+<SCRIPT language="javascript">
+<!--
+
+var allkey="";
+var i=0;
+var flag=0;
+function setpv(allnum)
+{
+	var num = allnum.split('_');
+	document.getElementById("result").innerHTML=num[0];
+}
+
+function checkMail(s)
+{
+  	var pattern=/\w+@\w+\.[a-z]+/;
+  	if(pattern.test(s))
+    {
+       return true;
+    }
+  	else
+   {
+      return false;
+   }
+}
+
+
+function checkeandu(eanduid)
+{
+	var eanduvalue=G(eanduid).value;
+	var len=bytes(eanduvalue);
+	if(len>128)
+	{
+		showErr(2,"您输入的网址或邮箱太长，请保持在128字节以内。");
+		return false;
+	}
+	else
+	{
+		 return true;
+	}
+
+}
+
+function cmtdel(str)
+{
+	var pop=new Popup({ contentType:3,isReloadOnClose:false,width:340,height:80});
+	pop.setContent("title","删除评论");
+	pop.setContent("confirmCon","您确定要彻底删除这条评论吗？");
+	pop.setContent("callBack",delCallback2);
+	pop.setContent("parameter",{fid:str,popup:pop});
+	pop.build();
+	pop.show();
+	return false;
+}
+function delCallback2(para)
+{
+	var o_pop=para["popup"];
+	o_pop.config.contentType=1;
+	o_pop.setContent("contentUrl","");
+	o_pop.reBuild();
+	G(para["fid"]).target=o_pop.iframeIdName;
+	eval("document."+para["fid"]).submit();
+}
+
+String.prototype.byteLength = function() {
+    return this.replace(/[^\u0000-\u007f]/g,"\u0061\u0061").length;
+}
+
+function checkname(strid)
+{
+	var ele=document.getElementById(strid);
+	var len=bytes(ele.value);
+	if(len>49)
+	{
+		showErr(1,"您输入的姓名太长，请保持在49字节以内。");
+		return false;
+	}
+	else
+	{
+		if(len==0)
+		{
+			document.getElementById(strid).value="匿名网友";
+		}
+		 return true;
+	}
+
+}
+
+function checktext(textid)
+{
+        var tempStr='';
+        var isLightFont=false;
+		if(editor&&textid=="spBlogCmtText"){
+			//document.getElementById("spBlogCmtText").value=editor.getHtml();
+			tempStr=editor.getHtml();
+			tempStr=tempStr.replace(/<span style="filter:glow\(color=#([0-9a-z]{3,6}),strength=2\);height:0px;color:#([0-9a-z]{3,6})">/ig,'');
+			tempStr=tempStr.replace(/<\/span>/ig,'');
+			document.getElementById("spBlogCmtText").value=tempStr;
+            isLightFont=!(tempStr==editor.getHtml());
+        }
+		document.getElementById(textid).value=trimlr(textid);
+		var str=trimrn(textid);
+		len=str.length;
+		if(len==0 || ((/^[\s,　]+$/gi).test(str)) )
+		{
+			showErr(3,"您必须输入评论内容，请检查。");
+			return false;
+		}
+		else
+        {
+                len=str.byteLength();
+                var maxLength=isLightFont?916:1000;
+				if(len > maxLength)
+				{
+					showErr(3,"您输入的评论内容太长，请保持在500字以内。");
+					return false;
+				}
+				if(editor&&textid=="spBlogCmtText"){
+					document.getElementById("spBlogCmtText").value=editor.getHtml();
+					document.getElementById(textid).value=trimlr(textid);
+				}
+
+			return true;
+		}
+}
+
+function showErr(index,str)
+{
+	G(index+"_err").style.display="";
+	G(index+"_err_con").innerHTML=str;
+}
+function hidErr(index)
+{
+	G(index+"_err").style.display="none";
+	G(index+"_err_con").innerHTML="";
+}
+
+function alertPop(tit,con)
+{
+	var pop=new Popup({ contentType:4,isReloadOnClose:false,width:340,height:80});
+	pop.setContent("title",tit);
+	pop.setContent("alertCon",con);
+	pop.build();
+	pop.show();
+}
+
+function cmtfull()
+{
+	var cnum=0;
+	if(cnum>=50000)
+	{
+		alertPop("发表评论","单篇日志评论数最多为50000条.");
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+function checkcmtform()
+{
+	if(checkname("spBlogCmtor")&&checkeandu("spBlogCmtURL")&&checktext("spBlogCmtText")&&cmtfull())
+	{
+		submitForm();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+var g_pop=null;
+function submitForm()
+{
+	g_pop=new Popup({ contentType:1,isReloadOnClose:false,width:340,height:80});
+	g_pop.setContent("title","添加评论");
+	g_pop.setContent("contentUrl","");
+	g_pop.setContent("someDisabledBtn","btn_ok");
+	g_pop.build();
+	G("popFormSubmit").target=g_pop.iframeIdName;
+	g_pop.show();
+}
+
+function g_close_pop()
+{
+	g_pop.close();
+}
+
+function formatonlinpic()
+{
+var picobj=document.getElementsByName("onlinepic");
+var picnum=picobj.length;
+
+	for(var i=0;i<picnum;i++)
+	{
+		if(picobj[i].width>200)
+		{
+			picobj[i].width=200;
+		}
+		if(picobj[i].height>200)
+		{
+			picobj[i].height=200;
+		}
+	}
+    try{document.getElementById("btn_ok").disabled = "";}catch(e){}
+}
+
+function addToFavor(){
+var blogTitle='Tcpdump 的详细用法'.replace(/&#39;/g,'\'');
+window.open('http://cang.baidu.com/do/add?it='+encodeURIComponent(blogTitle+'_百度空间')+'&iu='+encodeURIComponent(location.href)+'&fr=sp#nw=1','_s','scrollbars=no,width=600,height=450,right=75,top=20,status=no,resizable=yes');
+return false;
+}
+
+var isIE = /*@cc_on!@*/false;
+function tracker(did,a){
+	return function(){
+		var t=new Date().getTime();
+		var href=a.href;
+        if(isIE){
+            var r = /href\s*=\s*("|')?([^\s]*)\1/gi;
+            if(r.test(a.outerHTML))
+                href = RegExp.$2;
+        }
+        new Image().src = "http://hi.baidu.com/sys/statlog/1.gif?m=" + did + "&v=" + encodeURIComponent(href) + "&c=" + encodeURIComponent(location.href) + "&t="+t;
+	}
+}
+
+function tracker_init(did){
+	var _s=document.getElementById(did);
+	var as = _s.getElementsByTagName('A');
+	for(var i = 0, j = as.length; i < j; i ++){
+		var a = as[i];
+		if(isIE){
+			a.attachEvent("onclick", tracker(did,a));
+		}else{
+			a.addEventListener("click", tracker(did,a), false);
+		}
+	}
+}
+
+
+/* some functions for cmt-reply */
+		function cmtreply(cmtName,cmtPorID)
+		{
+			window.location.hash="#send";
+			var cmtForm=document.form1;
+			cmtForm.cm.value="3";
+			if(!cmtForm.spReferTarget)
+			{
+				var ipt=document.createElement("input");
+				ipt.type="hidden";
+				ipt.name="spReferTarget";
+				ipt.value=cmtPorID;
+				cmtForm.appendChild(ipt);
+			}else cmtForm.spReferTarget.value=cmtPorID;
+
+
+			 //G("reTitle").innerHTML="回复"+cmtName+"：";
+			 G("cancleReLink").style.display="";
+			 cmtForm.btn_ok.value="回复评论";
+
+
+			 try{
+				editor.window.focus();
+                editor.window.document.body.innerHTML="回复"+cmtName+"：";
+
+                var w = editor.window;
+				if(w.getSelection){
+					var d = w.document;
+					var s = w.getSelection();
+					var r = d.createRange();
+					r.setStartAfter(d.body.firstChild);
+					r.setEndAfter(d.body.lastChild);
+					s.removeAllRanges();
+					s.addRange(r);
+				}
+			}catch(e){
+			 		try{
+				 		cmtForm.getElementsByTagName("textarea")[0].focus();
+				 		cmtForm.getElementsByTagName("textarea")[0].value="回复"+cmtName+"：";
+				 	}catch(e){}
+			}
+		}
+
+		function canclereply()
+		{
+			var cmtForm=document.form1;
+			cmtForm.cm.value="1";
+			try{cmtForm.removeChild(cmtForm.spReferTarget);}catch(e){}
+			/*
+			try{
+					var cmt=cmtForm.getElementsByTagName("textarea")[0]
+					cmt.value="";
+					cmt.focus();
+			}catch(e){}
+			*/
+
+			try{
+					var ed=editor.window.document.body;
+					ed.innerHTML="";
+					editor.window.focus();
+				}catch(e){
+					var cmt=cmtForm.getElementsByTagName("textarea")[0];
+					cmt.value="";
+					cmt.focus();
+			}
+
+			G("cancleReLink").style.display="none";
+			cmtForm.btn_ok.value="发表评论";
+		}
+
+		function gotoreply()
+		{//to checking whether reply cmt
+			if( window.location.hash.indexOf("&re=1")<0) return;
+			var cmtID=window.location.hash.split("&")[0].replace("#","");
+			var cmtlinks=document.getElementsByTagName("a");
+			for(var i=0,n=cmtlinks.length;i<n;i++)
+			{
+				if(cmtlinks[i].name==cmtID){ var rename=cmtlinks[i].getAttribute("rename");  repid=cmtlinks[i].getAttribute("repid"); break;}
+			}
+			if(typeof(rename)!="undefined"){
+				cmtreply(rename, repid);
+			}
+		}
+
+//-->
+</SCRIPT>
+
+<SCRIPT type="text/javascript">
+    /*<![CDATA[*/
+
+window.onerror=function(){return true;}
+
+var RelatedDocData = null, GetAndEval = false;
+(function(){
+	var xhr = BdAjax.getXHR();
+	if(xhr == null){
+		RelatedDocData = -1;
+		return;
+	}
+
+	xhr.open("GET", "/sys/search?type=8&word=Tcpdump%20%B5%C4%CF%EA%CF%B8%D3%C3%B7%A8&item=dc02538f2e51b6f2513d92ac&t=" + new Date().getTime(), true);
+	xhr.onreadystatechange = function(){
+		if(xhr.readyState == 4){
+			if(xhr.status == 0 || xhr.status == 200){
+				if(GetAndEval){
+					eval(xhr.responseText);
+				}else{
+					RelatedDocData = xhr.responseText;
+				}
+			}
+		}
+	}
+	xhr.send(null);
+})();
+/*]]>*/
+</SCRIPT>
+
+<LINK rel="stylesheet" type="text/css" href="./Tcpdump详细用法_files/mods.css"><LINK rel="stylesheet" type="text/css" href="./Tcpdump详细用法_files/49d135033b4001ec08fa93b6.css"><LINK rel="stylesheet" type="text/css" href="./Tcpdump详细用法_files/space.css"><STYLE type="text/css">
+/*<![CDATA[*/
+
+#usrbar{padding:4px 10px 3px 0;font-size:12px;height:19px;line-height:19px;color:#000000;font-family:Arial;text-align:right;background:#ffffff;filter:alpha(opacity=65);-moz-opacity:0.5;width:auto !important;width:100%;letter-spacing:normal}
+#usrbar a,#usrbar a:link,#usrbar a:visited{color:#0000CC;text-decoration:underline}
+#ft{clear:both;height:20px;line-height:20px;color:#666666;font-size:12px;font-family:Arial;text-align:center}
+#ft a,#ft a:link,#ft a:visited{color:#7777CC;text-decoration:underline}
+#usrbar,#usrbar a,#usrbar a:link,#usrbar a:visited,#ft,#ft a,#ft a:link,#ft a:visited{letter-spacing:normal}
+/*]]>*/
+</STYLE><STYLE type="text/css">
+/*<![CDATA[*/
+#in_related_doc a { text-decoration:none; }
+/*]]>*/
+</STYLE><LINK href="./Tcpdump详细用法_files/bdeditor.css" type="text/css" rel="Stylesheet"></HEAD><BODY onload="formatonlinpic();"><IFRAME frameborder="0" name="_BdPopupLayer_b5lfq24b3n31kryiq41ku3ar" style="position:absolute; z-index:65001; display:none;" scrolling="no" id="_BdPopupLayer_b5lfq24b3n31kryiq41ku3ar"></IFRAME><IFRAME frameborder="0" name="_BdPopupLayer_9tm7huat86pjqsbnwuxrf6gb" style="position:absolute; z-index:65001; display:none;" scrolling="no" id="_BdPopupLayer_9tm7huat86pjqsbnwuxrf6gb"></IFRAME><LINK href="file:///E:/ui/scripts/CommentEditor/css/default/bdeditor.css" type="text/css" rel="Stylesheet"><IFRAME frameborder="0" name="_BdPopupLayer_shkqp48xbq6jod14xutgqp1d" style="position:absolute; z-index:65001; display:none;" scrolling="no" id="_BdPopupLayer_shkqp48xbq6jod14xutgqp1d"></IFRAME><IFRAME frameborder="0" name="_BdPopupLayer_113kuqpqp4yo64v8uk560xlg" style="position:absolute; z-index:65001; display:none;" scrolling="no" id="_BdPopupLayer_113kuqpqp4yo64v8uk560xlg"></IFRAME>
+<CENTER>
+<SCRIPT type="text/javascript">
+/*<![CDATA[*/
+if(top.location != self.location){
+	top.location = self.location;
+}
+var myref = encodeURIComponent("http://hi.baidu.com/%C5%A3x%C4%D0/blog/item/dc02538f2e51b6f2513d92ac%2Ehtml");
+/*]]>*/
+</SCRIPT>
+
+
+
+
+
+
+
+
+
+<DIV id="usrbar"><NOBR>
+
+			<A id="hi_index" href="http://hi.baidu.com/" target="_blank">百度空间</A>&nbsp;|&nbsp;<A href="http://www.baidu.com/" target="_blank">百度首页</A>&nbsp;<SCRIPT type="text/javascript">
+		document.write('| <a href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u=http://hi.baidu.com' + encodeURIComponent('/%C5%A3x%C4%D0/blog/item/dc02538f2e51b6f2513d92ac%2Ehtml') + '">登录</a>');
+		</SCRIPT>| <A href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u=http://hi.baidu.com%2F%25C5%25A3x%25C4%25D0%2Fblog%2Fitem%2Fdc02538f2e51b6f2513d92ac%252Ehtml">登录</A>| <A href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u=http://hi.baidu.com%2F%25C5%25A3x%25C4%25D0%2Fblog%2Fitem%2Fdc02538f2e51b6f2513d92ac%252Ehtml">登录</A>
+		
+</NOBR></DIV>
+
+
+
+		<DIV id="newUserTip" style="text-align: right; height: 130px; position: absolute; top: 26px; right: 0px; float: right; z-index: 30000; width: 225px; ">
+	<A id="newUserTipShadow" onclick="newUserRegLog()" href="http://hi.baidu.com/st/reg.html" target="_blank" style="color: rgb(66, 66, 249) !important; background-image: none !important; background-repeat: initial !important; background-attachment: initial !important; -webkit-background-clip: initial !important; -webkit-background-origin: initial !important; background-color: transparent !important; text-decoration: none !important; font-size: 14px; width: 55px; height: 14px; position: absolute; top: 108px; right: 14px; z-index: 30001; overflow-x: hidden; overflow-y: hidden; display: block; background-position: initial initial !important; ">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</A>
+	<EMBED id="newUserTipSwf" allowscriptacess="always" style="height: 130px; width: 225px; " src="http://hi.baidu.com/ui/flash/userReg/guide.swf" wmode="transparent">
+	</DIV>
+	<SCRIPT language="javascript">
+	<!--
+		function newUserTipShow(f)
+		{
+			if(f=="0"){//close
+				G("newUserTipSwf").style.width="40px";
+				G("newUserTip").style.width="40px";
+				G("newUserTipShadow").style.display="none";
+			}else{//show
+				G("newUserTip").style.width="225px";
+				G("newUserTipSwf").style.width="225px";
+				G("newUserTipShadow").style.display="block";
+
+			}
+		}
+
+		function newUserRegLog(){
+			var now=new Date();
+			now.setTime(now.getTime()+5*60*1000);
+			document.cookie="BDSP_REGFLAG=1;expires="+now.toGMTString()+";path=/";
+			new Image().src="http://hi.baidu.com/sys/statlog/1.gif?m=blog_newer_pro2_click&v=/%C5%A3x%C4%D0&t="+Math.random();
+		}
+	//-->
+	</SCRIPT>
+	
+
+
+
+<SCRIPT type="text/javascript">
+
+function set_cookie_4_bdtip(index/* start from one */, value){
+	var bdtip = document.cookie.match(/(^| )BDTIP=([^;]*)(;|$)/);
+	if(!bdtip){
+		bdtip=new Array(index);
+		for(var i=0,n=bdtip.length;i<n;i++)
+		{
+			if(bdtip[i]=="" || bdtip[i]==null)  bdtip[i]=0;
+			if(i == index - 1){
+				bdtip[i] = value;
+			}
+		}
+	}else{
+	bdtip = bdtip[2].split('-');
+	if(index > bdtip.length)  bdtip.length= index;
+	for(var i = 0, j = bdtip.length; i < j; i ++){
+		if(bdtip[i]=="" || bdtip[i]==null) bdtip[i]=0;
+		if(i == index - 1){
+			bdtip[i] = value;
+		}
+	}
+	}
+	bdtip = bdtip.join('-');
+	document.cookie = "BDTIP=" + bdtip+ ";expires=Wed, 28-Nov-37 01:45:46 GMT;path=/;";
+}
+</SCRIPT>
+<DIV id="main" align="left">
+<!--[if IE]>
+<script>
+var objmain = document.getElementById("main");
+function updatesize(){ var bodyw = window.document.body.offsetWidth; if(bodyw <= 790) objmain.style.width="772px"; else if(bodyw >= 1016) objmain.style.width="996px"; else objmain.style.width="100%"; }
+updatesize(); window.onresize = updatesize;
+</script>
+<![endif]-->
+	<DIV id="header">
+	<DIV class="lc"><DIV class="rc"></DIV></DIV>
+<DIV class="tit"><A href="http://hi.baidu.com/%C5%A3x%C4%D0" class="titlink" title="牛X男的空间 http://hi.baidu.com/牛x男">阿狼哥</A></DIV>
+<DIV class="desc">生活，个人心得，电脑技术</DIV>
+<DIV id="tabline">&nbsp;</DIV>
+	<DIV id="tab"><A href="http://hi.baidu.com/%C5%A3x%C4%D0">主页</A><A href="http://hi.baidu.com/%C5%A3x%C4%D0/blog" class="on">博客</A><A href="http://hi.baidu.com/%C5%A3x%C4%D0/album">相册</A><SPAN>|</SPAN><A href="http://hi.baidu.com/%C5%A3x%C4%D0/profile">个人档案</A>
+	<SPAN>|</SPAN><A href="http://hi.baidu.com/%C5%A3x%C4%D0/friends">好友</A>
+
+
+
+	</DIV>
+</DIV>
+
+<DIV class="stage">
+<DIV class="stagepad">
+<DIV style="width:100&percnt;">
+
+
+	
+
+	<TABLE width="100&percnt;" border="0" cellspacing="0" cellpadding="0" class="modth">
+	<TBODY><TR><TD class="modtl" width="7">&nbsp;</TD>
+	<TD class="modtc" nowrap=""><DIV class="modhead"><SPAN class="modtit">查看文章</SPAN></DIV></TD>
+	<TD class="modtc" nowrap="" align="right">
+	</TD><TD class="modtr" width="7">&nbsp;</TD>
+	</TR></TBODY></TABLE>
+
+<DIV id="m_blog" class="modbox">
+<DIV class="tit">Tcpdump 的详细用法</DIV>
+<DIV class="date">2009-05-18  16:07</DIV>
+<TABLE style="table-layout:fixed"><TBODY><TR><TD><DIV id="blog_text" class="cnt"><P>第一种是关于类型的关键字，主要包括host，net，port, 例如 host 210.27.48.2，指明 210.27.48.2是一台主机，net 202.0.0.0 指明 202.0.0.0是一个网络地址，port 23 指明端口号是23。如果没有指定类型，缺省的类型是host.</P>
+<P>第二种是确定传输方向的关键字，主要包括src , dst ,dst or src, dst and src ,这些关键字指明了传输的方向。举例说明，src 210.27.48.2 ,指明ip包中源地址是210.27.48.2 , dst net 202.0.0.0 指明目的网络地址是202.0.0.0 。如果没有指明方向关键字，则缺省是src or dst关键字。<BR>
+<BR>
+第三种是协议的关键字，主要包括fddi,ip,arp,rarp,tcp,udp等类型。Fddi指明是在FDDI(分布式光纤数据接口网络)上的特定 的网络协议，实际上它是&rdquo;ether&rdquo;的别名，fddi和ether具有类似的源地址和目的地址，所以可以将fddi协议包当作ether的包进行处理和 分析。其他的几个关键字就是指明了监听的包的协议内容。如果没有指定任何协议，则tcpdump将会监听所有协议的信息包。</P>
+<P>除了这三种类型的关键字之外，其他重要的关键字如下：gateway, broadcast,less,greater,还有三种逻辑运算，取非运算是 &lsquo;not &lsquo; &lsquo;! &lsquo;, 与运算是&rsquo;and&rsquo;,&#39;&amp;&amp;&rsquo;;或运算 是&rsquo;or&rsquo; ,&rsquo;││&rsquo;；这些关键字可以组合起来构成强大的组合条件来满足人们的需要，下面举几个例子来说明。<BR>
+普通情况下，直接启动tcpdump将监视第一个网络界面上所有流过的数据包。<BR>
+# tcpdump<BR>
+tcpdump: listening on fxp0<BR>
+11:58:47.873028 202.102.245.40.netbios-ns &gt; 202.102.245.127.netbios-ns: udp 50<BR>
+11:58:47.974331 0:10:7b:8:3a:56 &gt; 1:80:c2:0:0:0 802.1d ui/C len=43<BR>
+0000 0000 0080 0000 1007 cf08 0900 0000<BR>
+0e80 0000 902b 4695 0980 8701 0014 0002<BR>
+000f 0000 902b 4695 0008 00<BR>
+11:58:48.373134 0:0:e8:5b:6d:85 &gt; Broadcast sap e0 ui/C len=97<BR>
+ffff 0060 0004 ffff ffff ffff ffff ffff<BR>
+0452 ffff ffff 0000 e85b 6d85 4008 0002<BR>
+0640 4d41 5354 4552 5f57 4542 0000 0000<BR>
+0000 00<BR>
+使用-i参数指定tcpdump监听的网络界面，这在计算机具有多个网络界面时非常有用，<BR>
+使用-c参数指定要监听的数据包数量，<BR>
+使用-w参数指定将监听到的数据包写入文件中保存</P>
+<P>A想要截获所有210.27.48.1 的主机收到的和发出的所有的数据包：<BR>
+#tcpdump host 210.27.48.1</P>
+<P>B想要截获主机210.27.48.1 和主机210.27.48.2 或210.27.48.3的通信，使用命令：（在命令行中适用　　　括号时，一定要<BR>
+#tcpdump host 210.27.48.1 and \ (210.27.48.2 or 210.27.48.3 \)</P>
+<P>C如果想要获取主机210.27.48.1除了和主机210.27.48.2之外所有主机通信的ip包，使用命令：<BR>
+#tcpdump ip host 210.27.48.1 and ! 210.27.48.2</P>
+<P>D如果想要获取主机210.27.48.1接收或发出的telnet包，使用如下命令：<BR>
+#tcpdump tcp port 23 host 210.27.48.1</P>
+<P>E 对本机的udp 123 端口进行监视 123 为ntp的服务端口<BR>
+# tcpdump udp port 123</P>
+<P>F 系统将只对名为hostname的主机的通信数据包进行监视。主机名可以是本地主机，也可以是网络上的任何一台计算机。下面的命令可以读取主机hostname发送的所有数据：<BR>
+#tcpdump -i eth0 src host hostname</P>
+<P>G 下面的命令可以监视所有送到主机hostname的数据包：<BR>
+#tcpdump -i eth0 dst host hostname</P>
+<P>H 我们还可以监视通过指定网关的数据包：<BR>
+#tcpdump -i eth0 gateway Gatewayname</P>
+<P>I 如果你还想监视编址到指定端口的TCP或UDP数据包，那么执行以下命令：<BR>
+#tcpdump -i eth0 host hostname and port 80</P>
+<P>J 如果想要获取主机210.27.48.1除了和主机210.27.48.2之外所有主机通信的ip包<BR>
+，使用命令：<BR>
+#tcpdump ip host 210.27.48.1 and ! 210.27.48.2</P>
+<P>K 想要截获主机210.27.48.1 和主机210.27.48.2 或210.27.48.3的通信，使用命令<BR>
+：（在命令行中适用　　　括号时，一定要<BR>
+#tcpdump host 210.27.48.1 and \ (210.27.48.2 or 210.27.48.3 \)</P>
+<P>L 如果想要获取主机210.27.48.1除了和主机210.27.48.2之外所有主机通信的ip包，使用命令：<BR>
+　　　#tcpdump ip host 210.27.48.1 and ! 210.27.48.2</P>
+<P>M 如果想要获取主机210.27.48.1接收或发出的telnet包，使用如下命令：<BR>
+　　　#tcpdump tcp port 23 host 210.27.48.1</P>
+<P>第三种是协议的关键字，主要包括fddi,ip ,arp,rarp,tcp,udp等类型<BR>
+除了这三种类型的关键字之外，其他重要的关键字如下：gateway, broadcast,less,<BR>
+greater,还有三种逻辑运算，取非运算是 &lsquo;not &lsquo; &lsquo;! &lsquo;, 与运算是&rsquo;and&rsquo;,&#39;&amp;&amp;&rsquo;;或运算 是&rsquo;o<BR>
+r&rsquo; ,&rsquo;||&rsquo;；<BR>
+第二种是确定传输方向的关键字，主要包括src , dst ,dst or src, dst and src ,<BR>
+如果我们只需要列出送到80端口的数据包，用dst port；如果我们只希望看到返回80端口的数据包，用src port。<BR>
+#tcpdump &ndash;i eth0 host hostname and dst port 80 目的端口是80<BR>
+或者<BR>
+#tcpdump &ndash;i eth0 host hostname and src port 80 源端口是80 一般是提供http的服务的主机<BR>
+如果条件很多的话 要在条件之前加and 或 or 或 not<BR>
+#tcpdump -i eth0 host ! 211.161.223.70 and ! 211.161.223.71 and dst port 80</P>
+<P>如果在ethernet 使用混杂模式 系统的日志将会记录</P>
+<P>May 7 20:03:46 localhost kernel: eth0: Promiscuous mode enabled.<BR>
+May 7 20:03:46 localhost kernel: device eth0 entered promiscuous mode<BR>
+May 7 20:03:57 localhost kernel: device eth0 left promiscuous mode</P>
+<P>tcpdump对截获的数据并没有进行彻底解码，数据包内的大部分内容是使用十六进制的形式直接打印输出的。显然这不利于分析网络故障，通常的解决办法是先使用带-w参数的tcpdump 截获数据并保存到文件中，然后再使用其他程序进行解码分析。当然也应该定义过滤规则，以避免捕获的数据包填满整个硬盘。</P>
+<P>另外，使用Ethereal配合tcpdump可以实现很多意想不到的功能，比如过滤密码之类的，呵呵！</P></DIV></TD></TR></TBODY></TABLE>
+<BR>
+<DIV class="opt">
+<A href="http://hi.baidu.com/%C5%A3x%C4%D0/blog/category/linux%20%C3%FC%C1%EE%CA%B9%D3%C3" title="查看该分类中所有文章">类别：linux 命令使用</A>
+
+	
+	| <A title="将此文章添加到百度搜藏" href="http://cang.baidu.com/do/add" onclick="return addToFavor();" target="_blank">添加到搜藏</A>
+	
+	| 浏览(<SPAN id="result">6</SPAN>)
+	| <A href="http://hi.baidu.com/%C5%A3x%C4%D0/blog/item/dc02538f2e51b6f2513d92ac.html#send">评论</A>&nbsp;(0)
+
+<SCRIPT language="javascript">
+/*<![CDATA[*/
+var pre = [true,'Linux通用系统优化', 'Linux通用系统优化','/%C5%A3x%C4%D0/blog/item/2147301f1145d86bf624e433.html'];
+var post = [true,'解压所有压缩包的shell','解压所有压缩包的shell', '/%C5%A3x%C4%D0/blog/item/ac9566c2529112130ef477fd.html'];
+if(pre[0] || post[0]){
+	document.write('<div style="height:5px;line-height:5px;">&nbsp;</div><div id="in_nav">');
+	if(pre[0]){
+		document.write('上一篇：<a href="' + pre[3] + '" title="' + pre[1] + '">' +  pre[2] + '</a>&nbsp;&nbsp;&nbsp;&nbsp;');
+	}
+	if(post[0]){
+		document.write('下一篇：<a href="' + post[3] + '" title="' + post[1] + '">' +  post[2] + '</a>');
+	}
+	document.write('</div>');
+}
+/*]]>*/
+</SCRIPT><DIV style="height:5px;line-height:5px;">&nbsp;</DIV><DIV id="in_nav">上一篇：<A href="file:///E:/%C5%A3x%C4%D0/blog/item/2147301f1145d86bf624e433.html" title="Linux通用系统优化">Linux通用系统优化</A>&nbsp;&nbsp;&nbsp;&nbsp;下一篇：<A href="file:///E:/%C5%A3x%C4%D0/blog/item/ac9566c2529112130ef477fd.html" title="解压所有压缩包的shell">解压所有压缩包的shell</A></DIV><DIV style="height:5px;line-height:5px;">&nbsp;</DIV><DIV id="in_nav">上一篇：<A href="http://hi.baidu.com/%C5%A3x%C4%D0/blog/item/2147301f1145d86bf624e433.html" title="Linux通用系统优化">Linux通用系统优化</A>&nbsp;&nbsp;&nbsp;&nbsp;下一篇：<A href="http://hi.baidu.com/%C5%A3x%C4%D0/blog/item/ac9566c2529112130ef477fd.html" title="解压所有压缩包的shell">解压所有压缩包的shell</A></DIV>
+
+</DIV>
+<DIV class="line">&nbsp;</DIV>
+
+
+
+    
+<DIV id="in_related_doc"><DIV class="tit">相关文章：</DIV><TABLE cellpadding="0" cellspacing="3" border="0"><TBODY><TR><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/adriannet/blog/item/cc913680364dabd29023d90f.html" target="_blank" title="网络检控工具Tcpdump的详细用法!">网络检控工具Tcpdump的详细用法!</A>　　　　　　　　　</TD><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/l_zhenqiang/blog/item/b97384efa2c4e8eace1b3e0e.html" target="_blank" title="tcpdump详细用法">tcpdump详细用法</A></TD></TR><TR><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/52hack/blog/item/c65963607633264cebf8f8e2.html" target="_blank" title="linux 中 tcpdump命令的用法">linux 中 tcpdump命令的用法</A>　　　　　　　　　</TD><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/xfun68/blog/item/b67666f3678016c30a46e0a8.html" target="_blank" title="tcpdump 常用用法举例及简介(续)">tcpdump 常用用法举例及简介(续)</A></TD></TR><TR><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/xfun68/blog/item/1d81bd2adf104825d42af1af.html" target="_blank" title="tcpdump 常用用法举例及简介">tcpdump 常用用法举例及简介</A>　　　　　　　　　</TD><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/readbsd/blog/item/a3f71603176e4a713812bb37.html" target="_blank" title="Tcpdump 的用法">Tcpdump 的用法</A></TD></TR><TR><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/kissdev/blog/item/f82bc74eb481030cb2de053a.html" target="_blank" title="Linux网络协议分析工具tcpdump和tshark用法">Linux网络协议分析工具tcpdump和...</A>　　　　　　　　　</TD><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/ehior/blog/item/cf8b6723208aed4b935807a0.html" target="_blank" title="tcpdump用法">tcpdump用法</A></TD></TR><TR><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/topasstem8/blog/item/0712a4ca7d56c242f31fe7e7.html" target="_blank" title="WinDump用法---Win平台下的Tcpdump">WinDump用法---Win平台下的Tcpdu...</A>　　　　　　　　　</TD><TD width="15px"><A style="font-size:25px">&bull;</A></TD><TD><A href="http://hi.baidu.com/%BA%DA%D7%D6%C4%D0%BA%A2/blog/item/99f4bb3e87ebc8f9838b136a.html" target="_blank" title="WinDump(Win32平台下的Tcpdump)用法">WinDump(Win32平台下的Tcpdump)...</A></TD></TR><TR><TD colspan="4"><A target="_blank" href="http://hi.baidu.com/sys/search?pageno=1&type=7&sort=1&word=Tcpdump%20%B5%C4%CF%EA%CF%B8%D3%C3%B7%A8&item=dc02538f2e51b6f2513d92ac">更多&gt;&gt;</A></TD></TR></TBODY></TABLE></DIV><DIV class="line">&nbsp;</DIV>
+<SCRIPT language="javascript" type="text/javascript">
+/*<![CDATA[*/
+function HI_MOD_IN_RELATED_DOC_CALLBACK(arg){
+    if(arg.length <= 1) return false;
+    var hasMore = arg[0];
+    var D=function(A,B){A[A.length]=B;}
+    if(arg.length % 2 == 0) D(arg, ["","","",""]);
+
+    var html = ['<div id="in_related_doc"><div class="tit">相关文章：</div>'];
+    D(html, '<table cellpadding="0" cellspacing="3" border="0">');
+    for(var i = 1, j = arg.length; i < j; i += 2){
+        D(html, '<tr>');
+        D(html, '<td width="15px"><a style="font-size:25px" >&#8226;</a></td><td><a href="http://hi.baidu.com/' + arg[i][3] + '/blog/item/' + arg[i][2] + '.html" target="_blank" title="' + arg[i][0] + '">' + arg[i][1] + '</a>');
+        D(html, new Array(10).join('\u3000'));
+        D(html, '</td>');
+        if(arg[i + 1][0] != "")
+            D(html, '<td width="15px"><a style="font-size:25px" >&#8226;</a></td><td><a href="http://hi.baidu.com/' + arg[i + 1][3] + '/blog/item/' + arg[i + 1][2] + '.html" target="_blank" title="' + arg[i + 1][0] + '">' + arg[i + 1][1] + '</a></td>');
+        else
+            D(html, '<td>&nbsp;</td><td>&nbsp;</td>');
+        D(html, '</tr>');
+    }
+    if(hasMore) D(html, '<tr><td colspan="4"><a target="_blank" href="/sys/search?pageno=1&type=7&sort=1&word=Tcpdump%20%B5%C4%CF%EA%CF%B8%D3%C3%B7%A8&item=dc02538f2e51b6f2513d92ac">更多&gt;&gt;</a></td></tr>');
+    D(html, '</table></div><div class="line">&nbsp;</div>');
+
+    var div = document.getElementById('in_related_tmp');
+    if(div){
+        div.innerHTML = html.join('');
+        while(div.firstChild){
+            div.parentNode.insertBefore(div.firstChild, div);
+        }
+        div.parentNode.removeChild(div);
+    }
+	window.setTimeout("tracker_init('in_related_doc')",100);
+}
+
+if(RelatedDocData == -1){	// not supported xhr
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = '/sys/search?type=8&word=Tcpdump%20%B5%C4%CF%EA%CF%B8%D3%C3%B7%A8&item=dc02538f2e51b6f2513d92ac&t=' + new Date().getTime();
+    document.getElementsByTagName('HEAD')[0].appendChild(script);
+}else if(RelatedDocData == null){
+	GetAndEval = true;
+}else{
+	eval(RelatedDocData);
+}
+
+/*]]>*/
+</SCRIPT>
+    
+
+
+
+
+
+
+<DIV id="in_reader">
+<DIV class="tit">最近读者：</DIV>
+
+<SCRIPT>
+
+	var g_spAnnony=true;
+
+
+var g_read=[
+
+{}
+];
+g_read.length=g_read.length-1;
+
+var _rh1="";
+var _rh2="";
+
+function wrreader(){
+	_rh1 += '<table width="100%" ><tr>';
+	_rh2+='<tr>';
+	if(g_spAnnony){
+		_rh1+='<td align="center" width="10%" ><img border="0" width="55" height="55" src="http://img.baidu.com/hi/img/portraitn.jpg"></td>';
+		_rh2+='<td>&nbsp;</td>';
+		if(g_read.length>0){
+			_rh1+='<td align="left" width="12%">';
+		}else{
+			_rh1+='<td align="left" width="100%">';
+		}
+		_rh1+='<a href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u='+myref+'" target="_self">登录</a>后，您就出现在这里。</td>';
+		_rh2+='<td>&nbsp;</td>'
+	}
+	if(g_read.length==0){
+		if(!g_spAnnony){
+			_rh1+='<td align=left width="100%">最近还没有登录用户看过这篇文章……</td>';
+			_rh2+='<td>&nbsp;</td>';
+		}
+	}else{
+		for(i=0,len=g_read.length;i<len;i++){
+			_rh1+='<td align="center" valign="bottom" width="10%" class="user"><a href="/'+g_read[i][0]+'" target="_blank"><img border="0" src="http://himg.baidu.com/sys/portraitn/item/'+g_read[i][1]+'.jpg"></a></td>';
+			_rh2+='<td align="center" valign="top" class="user"><a href="/'+g_read[i][0]+'" target="_blank">'+g_read[i][2]+'</a></td>';
+		}
+	}
+	_rh1+='<td width="100%"></td></tr>';
+	_rh2+='<td></td></tr></table>';
+	document.write(_rh1+_rh2);
+}
+
+wrreader();
+</SCRIPT><TABLE width="100&percnt;"><TBODY><TR><TD align="center" width="10&percnt;"><IMG border="0" width="55" height="55" src="./Tcpdump详细用法_files/portraitn.jpg"></TD><TD align="left" width="100&percnt;"><A href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u=http%3A%2F%2Fhi.baidu.com%2F%25C5%25A3x%25C4%25D0%2Fblog%2Fitem%2Fdc02538f2e51b6f2513d92ac%252Ehtml" target="_self">登录</A>后，您就出现在这里。</TD><TD width="100&percnt;"></TR><TR><TD>&nbsp;</TD><TD>&nbsp;</TD><TD></TR></TBODY></TABLE><TABLE width="100&percnt;"><TBODY><TR><TD align="center" width="10&percnt;"><IMG border="0" width="55" height="55" src="./Tcpdump详细用法_files/portraitn(1).jpg"></TD><TD align="left" width="100&percnt;"><A href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u=http%3A%2F%2Fhi.baidu.com%2F%25C5%25A3x%25C4%25D0%2Fblog%2Fitem%2Fdc02538f2e51b6f2513d92ac%252Ehtml" target="_self">登录</A>后，您就出现在这里。</TD><TD width="100&percnt;"></TR><TR><TD>&nbsp;</TD><TD>&nbsp;</TD><TD></TR></TBODY></TABLE>
+
+
+
+
+
+	</DIV>
+
+<DIV class="line">&nbsp;</DIV>
+
+
+
+<SCRIPT language="JavaScript">
+allkey=allkey+"fd89163fac9566c27d1e7167_dc02538f2e51b6f2513d92ac_";
+</SCRIPT>
+
+<DIV id="in_comment">
+<A name="comment"></A>
+<DIV class="tit">网友评论：</DIV>
+<SCRIPT>
+function writecmt(type,id,cmtname,cmturl,portraitId){
+	var html1="";
+	cmturl=cmturl.replace("https://","http://");
+	if(type==1){
+			html1="<a href='"+cmturl+"' target='_blank' title='"+cmturl+"'><img  border='0' src='http://himg.baidu.com/sys/portraitn/item/"+portraitId+".jpg'><br>"+cmtname+"</a>";
+	}else{
+		if(cmtname=="" || cmtname=="匿名网友"){
+			if(cmturl==""){
+				html1="<a>匿名网友</a>";
+			}else{
+				html1="<a href='"+cmturl+"' target='_blank' title='"+cmturl+"'>"+cmtname+"</a>";
+			}
+		}else{
+			if(cmturl==""){
+				html1="<div class='f14' style='display:inline'>网友:<a>"+cmtname+"</a></div>";
+			}else{
+				html1="<div class='f14' style='display:inline'>网友:<a href='"+cmturl+"' target='_blank' title='"+cmturl+"'>"+cmtname+"</a></div>";
+			}
+		}
+	}
+	document.write(html1);
+}
+function filterCmtContent(n){
+	if(!BdBrowser.isIE){
+		var defaultfilter1='<span style="filter:glow(color=#000000,strength=2);height:0px;color:#000000">';
+		var defaultfilter2='<span style="height: 0px; color: rgb(0, 0, 0);">';
+		var commentDiv=document.getElementById(n);
+		var divs=commentDiv.getElementsByTagName('div');
+		var d,tmp;
+		for( var i=0,len=divs.length;i<len;i++){
+			d=divs[i];
+			if(d.getAttribute('name')=='cmtcontent'){
+				tmp=d.innerHTML;
+				tmp=tmp.replace(/<span style="filter:glow\(color=#([0-9a-z]{3,6}),strength=2\);height:0px;color:#([0-9a-z]{3,6})">/ig,defaultfilter1);
+				tmp=tmp.replace('<span style="height: 0px; color: rgb(255, 255, 255);">',defaultfilter2);
+				d.innerHTML=tmp;
+			}
+		}
+	}
+}
+
+</SCRIPT>
+
+
+
+
+
+<DIV id="page"></DIV>
+
+</DIV>
+<SCRIPT>filterCmtContent('in_comment');</SCRIPT>
+
+
+<DIV id="in_send">
+<A name="send"></A>
+<FORM name="form1" id="popFormSubmit" action="http://hi.baidu.com/%C5%A3x%C4%D0/commit" method="post" onsubmit="return checkcmtform()">
+<INPUT type="hidden" name="ct" value="8">
+<INPUT type="hidden" name="cm" value="1">
+<INPUT type="hidden" name="spBlogID" value="dc02538f2e51b6f2513d92ac">
+<INPUT type="hidden" name="spRefURL" id="spRefURL" value="file:///E:/Today/Tcpdump&percnt;20&percnt;E7&percnt;9A&percnt;84&percnt;E8&percnt;AF&percnt;A6&percnt;E7&percnt;BB&percnt;86&percnt;E7&percnt;94&percnt;A8&percnt;E6&percnt;B3&percnt;95_&percnt;E9&percnt;98&percnt;BF&percnt;E7&percnt;8B&percnt;BC&percnt;E5&percnt;93&percnt;A5.htm">
+<SCRIPT>
+    document.getElementById("spRefURL").value = window.location.href;
+</SCRIPT>
+<DIV class="tit">发表评论：</DIV>
+<TABLE width="620" border="0" cellspacing="5" cellpadding="0">
+<TBODY><TR>
+
+<TD class="f14">姓　名：</TD>
+<TD><INPUT type="text" name="spBlogCmtor" id="spBlogCmtor" style="width:220px" onchange="checkname(&#39;spBlogCmtor&#39;)" maxlength="49" onfocus="hidErr(1);">
+<SCRIPT>
+document.write(" &nbsp;&nbsp; <a href='http://hi.baidu.com/st/reg.html' target='_blank'>注册</a>");
+document.write(' | <a href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u='+myref+'">登录</a>');
+
+</SCRIPT> &nbsp;&nbsp; <A href="http://hi.baidu.com/st/reg.html" target="_blank">注册</A> | <A href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u=http%3A%2F%2Fhi.baidu.com%2F%25C5%25A3x%25C4%25D0%2Fblog%2Fitem%2Fdc02538f2e51b6f2513d92ac%252Ehtml">登录</A> &nbsp;&nbsp; <A href="http://hi.baidu.com/st/reg.html" target="_blank">注册</A> | <A href="https://passport.baidu.com/?login&tpl=sp&tpl_reg=sp&u=http%3A%2F%2Fhi.baidu.com%2F%25C5%25A3x%25C4%25D0%2Fblog%2Fitem%2Fdc02538f2e51b6f2513d92ac%252Ehtml">登录</A>
+
+<DIV style="display:none" id="nmerror">*姓名最长为50字节</DIV></TD>
+</TR>
+
+<TR id="1_err" style="display:none">
+<TD>&nbsp;</TD>
+<TD><DIV class="error" id="1_err_con"></DIV></TD>
+</TR>
+
+<TR>
+<TD class="f14">网址或邮箱：</TD>
+<TD><INPUT type="text" name="spBlogCmtURL" id="spBlogCmtURL" style="width:360px" maxlength="128" onchange="checkeandu(&#39;spBlogCmtURL&#39;)" onfocus="hidErr(2);"> (选填)</TD>
+<SCRIPT>
+G("spBlogCmtor").value="";
+G("spBlogCmtURL").value="";
+</SCRIPT>
+
+</TR>
+
+<TR id="2_err" style="display:none">
+<TD>&nbsp;</TD>
+<TD><DIV class="error" id="2_err_con"></DIV></TD>
+</TR>
+
+<TR>
+<TD valign="top" class="f14" id="reTitle">内　容：</TD>
+<TD>        <DIV id="bdeditor_container_sgpdok7uhg0de4h4c1o5ski">            <TABLE width="100&percnt;" height="155px" cellpadding="0" cellspacing="0" border="0">                <TBODY><TR>                    <TD id="editor_toolbar_sgpdok7uhg0de4h4c1o5ski" class="ToolbarContainer"><DIV class="ToolbarStrip"><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD nowrap="nowrap"><DIV class="ToolbarItem" title="插入表情" id="ToolbarItem_7wfrc2xwqei2dr8a2wnk3cwu" onclick="_Instance[&#39;7wfrc2xwqei2dr8a2wnk3cwu&#39;].clickHandler(this)" onmouseup="_Instance[&#39;7wfrc2xwqei2dr8a2wnk3cwu&#39;].mouseUpHandler(this)" onmousedown="_Instance[&#39;7wfrc2xwqei2dr8a2wnk3cwu&#39;].mouseDownHandler(this)" onmouseout="_Instance[&#39;7wfrc2xwqei2dr8a2wnk3cwu&#39;].mouseOutHandler(this)" onmouseover="_Instance[&#39;7wfrc2xwqei2dr8a2wnk3cwu&#39;].mouseOverHandler(this)"><DIV class="img Smiley" alt="插入表情"><FONT style="font-size:12px">插入表情</FONT></DIV></DIV></TD></TR></TBODY></TABLE></DIV></TD>                </TR>                <TR>                    <TD id="editor_area_sgpdok7uhg0de4h4c1o5ski" class="EditorContainer"><IFRAME width="100&percnt;" height="155px" frameborder="0" src="javascript:void(0)"></IFRAME></TD>                </TR>            </TBODY></TABLE>        </DIV>            <DIV id="bdeditor_container_38l9r2ye7v8q2c5168w05kqu">            <TABLE width="100&percnt;" height="155px" cellpadding="0" cellspacing="0" border="0">                <TBODY><TR>                    <TD id="editor_toolbar_38l9r2ye7v8q2c5168w05kqu" class="ToolbarContainer"><DIV class="ToolbarStrip"><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD nowrap="nowrap"><DIV class="ToolbarItem" title="插入表情" id="ToolbarItem_dmrrwccjie1n1y04edto3k1" onclick="_Instance[&#39;dmrrwccjie1n1y04edto3k1&#39;].clickHandler(this)" onmouseup="_Instance[&#39;dmrrwccjie1n1y04edto3k1&#39;].mouseUpHandler(this)" onmousedown="_Instance[&#39;dmrrwccjie1n1y04edto3k1&#39;].mouseDownHandler(this)" onmouseout="_Instance[&#39;dmrrwccjie1n1y04edto3k1&#39;].mouseOutHandler(this)" onmouseover="_Instance[&#39;dmrrwccjie1n1y04edto3k1&#39;].mouseOverHandler(this)"><DIV class="img Smiley" alt="插入表情"><FONT style="font-size:12px">插入表情</FONT></DIV></DIV></TD></TR></TBODY></TABLE></DIV></TD>                </TR>                <TR>                    <TD id="editor_area_38l9r2ye7v8q2c5168w05kqu" class="EditorContainer"><IFRAME width="100&percnt;" height="155px" frameborder="0" src="javascript:void(0)"></IFRAME></TD>                </TR>            </TBODY></TABLE>        </DIV>    <TEXTAREA name="spBlogCmtText" id="spBlogCmtText" style="width: 520px; height: 155px; display: none; " onfocus="hidErr(3);"></TEXTAREA>
+<SCRIPT>
+	var editor=null;
+	try{
+		editor=new BdEditor("spBlogCmtText",{width:"100%",height:"155px"});
+		editor.onfocus = function(){hidErr(3);}
+		editor.render();
+	}catch(e){
+		var spBlogCmtText = document.getElementById("spBlogCmtText");
+		var p = spBlogCmtText.previousSibling;
+		while(p && p.nodeType != 1) p = p.previousSibling;
+		if(p && /bdeditor_container/.test(p.id)){
+			p.parentNode.removeChild(p);
+		}
+		spBlogCmtText.style.display = '';
+		editor=null;
+	}
+</SCRIPT>
+
+<SCRIPT>
+G("spBlogCmtor").value=G("spBlogCmtor").defaultValue;
+G("spBlogCmtText").value="";
+</SCRIPT>
+</TD>
+</TR>
+<TR id="3_err" style="display:none">
+<TD>&nbsp;</TD>
+<TD><DIV class="error" id="3_err_con"></DIV></TD>
+</TR>
+
+<TR id="vercode">
+<TD valign="top" class="f14">验证码：</TD>
+<TD valign="top"><INPUT type="hidden" name="spVcode" value="">
+<INPUT type="text" onfocus="f_focus()" id="spVerifyKey" name="spVerifyKey" size="6" maxlength="4" autocomplete="off" tabindex="4">  请点击后输入四位验证码，字母不区分大小写<BR>
+<SCRIPT type="text/javascript">
+/*<![CDATA[*/
+
+function f_focus(){
+	getVcode();
+}
+function getVcode(){
+	var url="http://hi.baidu.com/sys/file/getvcode?echoback=getVcodeDone&t="+(new Date().getTime());
+	BdAjax.loadJS(url)
+}
+
+function getVcodeDone(vcode){
+	document.form1.spVcode.value=vcode;
+	var imgsrc="http://hiup.baidu.com/cgi-bin/genimg?"+vcode;
+	G('verifypic').src=imgsrc;
+	G('yanzheng').style.display="block";
+}
+function newverifypic(){
+	getVcode();
+	return false;
+}
+/*]]>*/
+</SCRIPT>
+<DIV id="yanzheng" style="display:none">
+<IMG id="verifypic" width="120" height="40"><WBR><A onfocus="this.blur();" href="http://hi.baidu.com/%C5%A3x%C4%D0/blog/item/dc02538f2e51b6f2513d92ac.html#" onclick="return newverifypic();" title="看不清左边的字符">看不清?</A>
+</DIV>
+</TD>
+</TR>
+
+
+<TR>
+<TD valign="top" class="f14">&nbsp;</TD>
+<TD valign="top" class="f14"><INPUT id="btn_ok" name="btn_ok" type="submit" value="发表评论" tabindex="5">&nbsp;&nbsp;&nbsp;&nbsp;<A href="http://hi.baidu.com/%C5%A3x%C4%D0/blog/item/dc02538f2e51b6f2513d92ac.html#" id="cancleReLink" onclick="canclereply(); return false;" style="display:none; font-size:12px;color:#666;">取消回复</A></TD>
+</TR>
+</TBODY></TABLE>
+</FORM>
+</DIV>
+
+
+
+
+<BR>
+</DIV>
+
+<TABLE width="100&percnt;" border="0" cellspacing="0" cellpadding="0" height="8">
+<TBODY><TR><TD class="modbl" width="7">&nbsp;</TD>
+<TD class="modbc">&nbsp;</TD>
+<TD class="modbr" width="7">&nbsp;</TD>
+</TR></TBODY></TABLE>
+
+
+
+
+</DIV>
+</DIV>
+
+</DIV>
+
+</DIV>
+
+<SCRIPT language="javascript">
+<!--
+var hstr="/%C5%A3x%C4%D0/brwstat?key1=1";
+document.write("<script src='"+hstr+"&key2="+allkey+"'><\/script>");
+//-->
+</SCRIPT><SCRIPT src="file:///E:/%C5%A3x%C4%D0/brwstat?key1=1&key2=fd89163fac9566c27d1e7167_dc02538f2e51b6f2513d92ac_"></SCRIPT><SCRIPT src="./Tcpdump详细用法_files/brwstat(1)"></SCRIPT>
+<BR><CENTER><DIV id="ft">&copy;2009 Baidu</DIV></CENTER>
+
+<SCRIPT>
+if(document.getElementById("m_blog"))
+{
+	var imgarray = document.getElementById("m_blog").getElementsByTagName('img');
+	var imgw = document.getElementById("m_blog").offsetWidth;
+	imgw =imgw-40;
+	for(var i=0; i<imgarray.length; i++){
+	if(imgarray[i].className=="blogimg" && imgarray[i].width>=imgw) imgarray[i].width=imgw;
+	}
+}
+
+// Fix ff bugs
+var blog_text = document.getElementById('blog_text');
+blog_text.innerHTML = blog_text.innerHTML.replace(/href\s*=\s*("|')?(\.\.\/\.\.\/)/gi,"href=$1../$2");
+
+gotoreply();
+</SCRIPT>
+</CENTER>
+
+
+<IMG src="./Tcpdump详细用法_files/c.gif" style="display:none;">
+</BODY></HTML>

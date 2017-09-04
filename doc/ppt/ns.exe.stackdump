@@ -1,0 +1,7 @@
+Exception: STATUS_ACCESS_VIOLATION at eip=00000000
+eax=00000000 ebx=00000003 ecx=0A29FE88 edx=007B4ECC esi=0022D730 edi=0022D790
+ebp=0022D508 esp=0022D4DC program=C:\cygwin\home\SeaSon\ns-allinone-2.29\ns-2.29\ns.exe, pid 1612, thread main
+cs=001B ds=0023 es=0023 fs=003B gs=0000 ss=0023
+Stack trace:
+Frame     Function  Args
+End of stack trace

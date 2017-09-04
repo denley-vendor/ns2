@@ -1,0 +1,599 @@
+Note: A few answers come from the discussion in Ns2 mail list and are proved
+to be effective.
+
+----------------------------------------------------------------------------
+Question 1: 
+
+Scheduler:: Event UID not valid! 
+
+Answer: 
+
+Each event in NS2 has a unique UID. The scheduler toggles the UID twice, 
+once during dispatching and once during scheduling. Thus, the event has a 
+positive UID after being scheduled and a negative one before being scheduled. 
+If the event has been scheduled but not dispatched, then it will have a 
+positive UID and cannot be scheduled again. 
+
+In implementing a new protocol, this error can happen in two cases:
+
+1. You are using timers. When a timer is scheduled again without the 
+previous schedule expiring - Trace which timer is scheduled and when it 
+will expire.
+
+2. You are dealing with packets. A packet is also a kind of event to be 
+scheduled and a UID is associated with it. When you create a 
+copy or alloc again before freeing it, due to the same packet with a positive 
+UID, it cannot be scheduled again. 
+-----------------------------------------------------------------------------
+
+Question 2:  
+
+What is the role of GOD?
+
+Answer:
+
+GOD, called general operations director, is an object which is aware of the 
+whole mobile wireless network topology during the period of simulation.
+
+GOD is used to store global information about the states of the simulated mobile 
+wireless network, i. e. , GoD is an omniscient observer, but the global 
+information GOD owns should not be totally available to any nodes in the 
+simulation, a node can obtain its partial information when needed.
+
+Currently, GOD is only used to store an array of the shortest number of hops 
+required to reach from one node to another. GOD does not calculate them 
+on the fly during the simulation, since it can be quite time consuming. 
+The information is loaded into GOD from the movement pattern file where 
+the lines similar to 
+
+$ns_ at 666.66 "$god_ set-dist 10 20 2"
+ 
+are used to load GOD with the information that the shortest path 
+between node 10 and node 20 is changed to 2 hops at time 666.66. 
+------------------------------------------------------------------------------
+
+Question 3: 
+
+How to debug my extension to ns2?
+
+Answer:
+
+There are two levels to debug:
+
+1. C++ level: 
+
+(1) To enable debug information in ns as follows:
+
+in your ns-allinone directory, edit the install file. 
+
+In a section which includes "# Build Tcl8.3.2", you need to add the option 
+
+--enable-symbols, such that:
+./configure --enable-gcc --disable-shared --prefix=$CUR_PATH || ....
+
+becomes:
+./configure --enable-gcc --enable-symbols --disable-shared --prefix=$CUR_PATH || ....
+
+In another section which includes "# Build tclcl",  you need to add --enable-debug 
+to your configure line, such that:
+
+./configure ||  ...
+
+becomes 
+
+./configure --enable-debug || ...
+
+(2) To enter your ns-allinone/ns directory, and open your Makefile.in. You need to
+change the line 
+
+CFLAGS  = $(CCOPT) $(DEFINE)
+
+to 
+
+CFLAGS  = -g $(CCOPT) $(DEFINE)
+
+(3) To go back to ns-allinone directory and type ./install
+
+(4)  the C++ debug with gdb
+    . gdb ns
+    .(gdb) set args myscript.tcl
+    .(gdb) b MyClass::myfunction 
+      # This line set breakpoint
+    .run
+
+2. Tcl Level
+
+You need to find a software which is called tcl-debug.
+
+(1) To place tcl-debug-2.0/ parallel to ns-2.26/
+(2) cd ns-2.26
+    ./configure --enable-debug --with-tcldebug and examine Makefile to ensure tcl-debug 
+options enabled.
+(3) make clean; make; make install
+
+(4) Add breakpts for tcl-debug
+Add "debug 1" (it's one not 'L') into your script file where you want to 
+debug.
+------------------------------------------------------------------------------------
+
+Question 4: 
+
+Difference between Thresholds in wireless-phy.cc
+
+Answer:
+
+(1) RXThreshold: If a packet reaches a node with a power level that is below
+RxThrehold, the node will receive the packet with error (i.e. will not be able
+to read the packet), but will understand that a packet is being transmitted for
+[0,T] sec.
+
+(2) CSThreshold: If a packet reaches a node with a power level that is below
+CSThresh_ , the node will not be able to understand that a packet is being
+transmitted for [0,T] sec; i.e. it will perceive the channel to be idle.
+
+(3) CPThreshold: Let a packet 'A' is being received by a node during [0,T] sec. If
+another packet ('B') transmission begins during [0,T] so that 'B' reaches the
+node with a power that is CPThreshold below the received power of packet 'A'
+(in dB scale), packet 'A' will survive (i.e. the node will be able to read
+packet 'A'). Otherwise, packet 'A' will "collide" with packet 'B' (so
+that the node will not be able to read either of the packets).
+-------------------------------------------------------------------------------------
+
+Question 5:
+
+What does it mean when ns gives the message "scheduler going
+backwards from 73.9587457845 to -1417846817.3257839 ?
+
+Answer:
+
+Most likely, one of the events gave rise to some other event in "past". If you 
+know how discrete event simulators work, this will be clear to you. However, 
+it seems that this occurred due to an overflow in calculating the timing for a 
+future event somewhere.
+------------------------------------------------------------------------------------
+
+Question 6:
+
+How to set up the wireless bandwidth (such as 802.11 a,b,g) in NS2?
+
+Answer:
+
+In ns2.26 and ns2.27, you can change (basicRate_ and dataRate_ ):
+
+Mac/802_11 set basicRate_ 1Mb 
+Mac/802_11 set dataRate_  11Mb 
+
+in your tcl script.
+
+FHSS (IEEE802.11)
+   Mac/802_11 set SlotTime_          0.000050        ;# 50us
+   Mac/802_11 set SIFS_              0.000028        ;# 28us
+   Mac/802_11 set PreambleLength_    0               ;# no preamble
+   Mac/802_11 set PLCPHeaderLength_  128             ;# 128 bits
+   Mac/802_11 set PLCPDataRate_      1.0e6           ;# 1Mbps
+   Mac/802_11 set dataRate_          1.0e6           ;# 11Mbps
+   Mac/802_11 set basicRate_         1.0e6           ;# 1Mbps
+
+DSSS (IEEE802.11b)
+   Mac/802_11 set SlotTime_          0.000020        ;# 20us
+   Mac/802_11 set SIFS_              0.000010        ;# 10us
+   Mac/802_11 set PreambleLength_    144             ;# 144 bit
+   Mac/802_11 set PLCPHeaderLength_  48              ;# 48 bits
+   Mac/802_11 set PLCPDataRate_      1.0e6           ;# 1Mbps
+   Mac/802_11 set dataRate_          11.0e6          ;# 11Mbps
+   Mac/802_11 set basicRate_         1.0e6           ;# 1Mbps
+
+Note: 
+
+-if using the short preamble option: you can change the line as:
+Mac/802_11 set PreambleLength_ 72
+
+-  # frequency is 2.4 GHz
+   Phy/WirelessPhy set freq_ 2.4e+9
+   # transmit power
+   Phy/WirelessPhy set Pt_ 3.3962527e-2
+   # Receive sensitivity.
+   Phy/WirelessPhy set RXThresh_ 6.309573e-12
+   Phy/WirelessPhy set CSThresh_ 6.309573e-12
+
+Note that the radio range that results from this configuration may or may
+not coincide with open field tests. If you want setup a specific range,
+use the program ~/indep-utils/propagation/threshold.cc to obtain the
+desired RXThresh_ (rx sensitivity) based on the above frequency, transmit
+power and your desired range.
+
+
+802.11g:
+
+#define DSSS_CWMin			15
+#define DSSS_CWMax			1023
+#define DSSS_SlotTime		0.000009	
+#define DSSS_CCATime 		0.000003	
+#define DSSS_RxTxTurnaroundTime	0.000002	
+#define DSSS_SIFSTime		0.000016 	
+#define DSSS_PreambleLength	 96
+#define DSSS_PLCPHeaderLength	40	
+#define DSSS_PLCPDataRate		6.0e6	// 6Mbps
+#define DSSS_MaxPropagationDelay     0.0000005	// 0.5us
+
+
+
+
+
+
+Note: bandwidth is different with achievable throughput.
+
+- In NS ACK are always sent at 1Mbps
+- NS use always the long PLCP preamble format sent at 1Mbps
+- by default NS uses RTS/CTS handshake
+- Packet's size has also an impact in the % of overhead.
+
+All this factor can  bound the achievable throughput
+
+-----------------------------------------------------------------------------------
+Question 7:
+
+When do we need to "make clean; make depend; make" in ns2?
+
+Answer:
+
+
+
+
+
+A trick: 
+
+- after making the changes in any tcl file I go into ns-lib.tcl, and 
+make a small change e.g delete a full stop in a comment or add my on 
+comment anywhere (note that this change should be in the cmmented area 
+not the actual code).
+- save the ns-lib.tcl file.
+- run "make" only.
+
+In this way I find that all the changes in all other tcl files take 
+effect. 
+
+the same trick whenever u change a .h  file only  i.e. 
+make some  trivial change in the corresponding  .cc file
+
+------------------------------------------------------------------------------------
+
+Question 8:
+
+How to deal with Very large trace files?
+
+Answer:
+
+(1) Don't trace-all
+
+(2) To Turn off some unused packet header
+
+(3) Two simple solutions using "pipe":
+    . To use tool (i.e awk) to filter only interesting events
+
+    set tr [open "| awk -f filter.awk >out.tr" w]
+    $ns trace-all $tr
+
+    .if You are not interested in traces and only results (average, 
+variation, distribution, count etc.)
+
+    set tr [open "| awk -f my_measure_tool.awk >my_results.txt" w]
+    $ns trace-all $tr
+(4) To try other compression skill, such as 
+You may reduce the size of the trace file by using the
+sed command on solaris machines.
+For example, if all you need is just the RTR and AGT
+trace lines, you may remove the MAC trace using
+cat tracefile.tr | sed -e "/MAC/d" >
+smallertracefile.tr
+
+------------------------------------------------------------------------------------
+
+Question 9:
+
+How to disable RTS/CTS?
+
+Answer:
+
+(1) If you are using ns-2.27, include the line:
+
+Mac/802_11 set RTSThreshold_ 3000  
+
+to your Tcl scrip 
+
+(2) If you are using older version, you need to do as below:
+
+To change the value in mac_802-11.h (a macro), then make depend, make
+
+In a similar way, you can change cw_, ShortRetryLimit_, LongRetryLimit_  etc.
+
+-----------------------------------------------------------------------------------
+
+Question 10:
+
+What is size of voice or data packet size used to simulate in a wireless LAN?
+
+Answer:
+
+voip:  150bytes  
+FTP: vaiable packet size, 150-1500Bytes
+HDTV or SDTV: 1500bytes
+-----------------------------------------------------------------------------------
+
+Question 11: 
+
+How to run a set of similar experiments together?
+
+Answer:
+
+Method 1: You can specify an input parameter to the simulation script. Then, based on the 
+value of your input, you can name your tracefiles differently. You could create, 
+for instance, the .sh script on the top of the NS simulator to launch consequently 
+all the simulations.
+
+Method 2: Type your tcl scipts sequentially, do remember to set different trace files 
+
+$>ns code1.tcl
+.....Starting Simulation
+ 
+ns code2.tcl     #just type in your commands here sequentially
+ns code3.tcl
+
+Method 3: Try doing this in TCL level using for loop. For example, look at parts
+of the code below:
+
+proc runsim { num_cbr i }
+   set CBRrate [expr $i*1000000] 
+   ...
+   ...
+   set traffic [new Application/Traffic/CBR]
+   $traffic set rate_ $CBRrate
+   ...   
+   ...
+
+   xxx   
+}
+
+for {set i 1} {$i < 10} {incr i 1} {
+   runsim $i
+}
+
+You can see that your main code is in the runsim procedure, but the
+main control is in the for loop below -- which increases the CBR rate
+from 1Mbps to 10Mbps using 1Mbps increment. At the end of the runsim
+procedure, you would see I put xxx there. It's where you can make a
+calculation and output to your output file (append line by line after
+each run); which means you have all the results in the same file ready
+to be plotted.
+
+Method 4:just write another script that passes a command line parameter
+to your ns script that is the CBR rate
+E.g
+
+In your ns script put
+if { $argc == 1 } {
+    set cbr [lindex $argv 0]
+    puts "CBR: $cbr"
+}
+<insert the rest of your script>
+
+Then in the running script do something like
+
+set max 20
+for { set cbr 1 } { $cbr <= $max } { set cbr [expr $cbr + 1] } {
+    puts "Running test CBR=$cbr"
+    exec ns myscript.tcl $cbr
+}
+-----------------------------------------------------------------------
+
+Question 12:
+
+Rx Power or carrier sense Threshold setting?
+
+Answer:
+
+- enter indep-utils/propagation directory 
+- g++ -lm -o threshold threshold.cc
+- ./threshold
+
+this tool can help you calculate 
+------------------------------------------------------------------------
+
+Question 13:
+
+How to pass an argument from tcl to c++?
+
+Answer:
+
+method 1: bind the variables you want to share
+method 2: For example:
+
+ Tcl& tcl = Tcl::instance();
+ tcl.eval("$cbr set packet_size_");
+ char* var_temp = tcl.result();
+
+--------------------------------------------------------------------------
+
+Question 14:
+
+How to post analyze the trace file?
+
+ANswer:
+
+The below is a awk script to analyze several parameters (average e-2-e delay,
+pdf, normalised routing load and dropped packets,..) for aodv old trace file
+format.
+
+BEGIN {
+
+droppedAODVPackets=0;
+sends=0;
+recvs=0;
+
+# highest packet id can be checked in the trace file for an approximate value
+highest_packet_id =500000;
+sum=0;
+AODV_Adv=0;
+}
+       
+{
+   action = $1;
+   time = $2;
+   node_1 = $3;
+   node_2 = $4;
+   src = $5;
+ 
+
+  
+# For stand alone ad hoc trace files:
+#   if ( packet_id > highest_packet_id ) highest_packet_id = packet_id;
+
+# For wired- and cireless trace files.
+
+      if ($5 =="cbr") {
+      packet_id = $12;
+      } else {
+      packet_id = $6; 
+      }
+
+ 
+
+#============= CALCULATE DELAY   =========================================
+   # getting start time is not a problem, provided you're not starting
+   # traffic at 0.0.
+   # could test for sending node_1_address or flow_id here.
+
+ if ( start_time[packet_id] == 0 )  start_time[packet_id] = time;
+   
+   # only useful for small unicast where packet_id doesn't wrap.
+   # checking receive means avoiding recording drops
+   if ( action != "d" ) {
+      if ( action == "r" ) {
+       # could test for receiving node_2_address or flow_id here.
+         end_time[packet_id] = time;
+   }
+   } else {
+      end_time[packet_id] = -1;
+   }
+#============= CALCULATE PACKET DELIVERY FRACTION============================
+# $3 = source node id , here I have 4 source nodes and start my analysis after
+490 seconds of simulation  (when traffic started)
+if (( $1 == "s") &&  ( $7 == "cbr" ) && ( $4
+=="AGT" ) && ( ( $3== "_5_" )   || ( $3==
+"_6_" )   ||  ($3=="_7_")  ||  ($3=="_8_")  
+)&& ($2 > 490.00 )    ) {
+      sends++;}
+
+
+# $4 = destination node in wired segment of network. if you simulate ad hoc only
+scenario the change $4 to $3 and %5 to $7.
+if ( ( $1 == "r") &&  ( $5 == "cbr" ) && (
+$4 == "0" ) && ($2 >  490.00 ) ) {
+      recvs++;}
+
+pdf = (recvs/sends)*100;
+
+
+#==================== ADVERTISEMENTS ==================
+
+if ( (($1=="f")  || ($1=="s") ) && ($4 ==
+"RTR") && ($7 =="AODV" ) && ($2 > 490.00
+) ) { 
+AODV_Adv++;
+}
+
+#============= DROPPED AODV PACKETS ========================================
+if ( ($1 == "D") && ($7=="cbr")  && ($2 >
+490.00 ) ){
+        droppedAODVBytes=droppedAODVBytes+$8 ;
+        droppedAODVPackets=droppedAODVPackets+1;  
+    }
+
+
+}                                           
+END {
+    for ( packet_id = 0; packet_id <= highest_packet_id; packet_id++ ) {
+       start = start_time[packet_id];
+       end = end_time[packet_id];
+       packet_duration = end - start;
+   if ( start < end ) sum= packet_duration+sum;
+}
+delay=sum/recvs;
+ 
+
+printf(" Average e-e delay: \t %f \n", delay);
+
+printf(" normalised routing load \t %f \n ", AODV_Adv/recvs);
+
+printf("No. of packets sent = %d \n", sends);
+printf(" No. of packets received = %d \n", recvs);
+printf(" Pdf (100%) = %f \n \n", pdf);
+
+printf("No. of dropped data (packets) = %d \n ",droppedAODVPackets);
+printf("No. of dropped data (bytes) = %d \n \n ",droppedAODVBytes);
+printf("No. of aodv advertisements = %f \n ",AODV_Adv);
+}
+
+------------------------------------------------------------------------------------
+
+Question 15:
+
+How to disable the routing when you wanna measure MAC layer performance?
+
+Answer:
+
+you can use DumbAgent as below:
+
+$ns_ node-config  \
+    -adhocRouting DumbAgent\
+    -llType $val(ll) \
+    -macType $val(mac) \
+    -ifqType $val(ifq) \
+    -ifqLen $val(ifqlen) \
+    -antType $val(ant) \
+    -propType $val(prop) \
+    -phyType $val(netif) \
+    -topoInstance $topo \
+    -agentTrace ON \
+    -routerTrace ON \
+    -macTrace ON \
+    -movementTrace OFF \
+    -channel [new $val(chan)]
+
+---------------------------------------------------------------------------------------
+
+Question 16:
+
+How to use parameters in command line?
+
+Answer:
+
+For example, if you try to pass the number of nodes as a parameter to
+your script such as my_script.tcl 10
+
+- use the following in your tcl file
+
+ set num_nodes [lindex $argv 0]
+
+- then use the num_nodes variable wherever you wanna
+--------------------------------------------------------------------------------------
+
+Question 17:
+
+How to debug by printf?
+
+Answer:
+
+method 1: printf("DEBUG TEST TEST\n"); don't use \r 
+
+and you may put a fflush(NULL); statement after prinf, then the result will
+get printed immediately.
+
+method 2: 
+
+char out[100];
+Tcl& tcl = Tcl::instance();
+sprintf(out, "puts \"DEBUG TEST TEST\"");
+tcl.eval(out);
+-------------------------------------------------------------------------------------
+  

@@ -1,0 +1,259 @@
+
+<!-- saved from url=(0055)http://blog.chinaunix.net/u2/87739/showart_1684616.html -->
+<HTML><HEAD><META http-equiv="Content-Type" content="text/html; charset=GB2312">
+
+<LINK rel="stylesheet" href="./NS2中事件调度过程浅析_files/index.css">
+<LINK rel="alternate" type="application/rss+xml" title="ChinaUnix Blog RSS Feed" href="http://blog.chinaunix.net/u/rss.php?id=87739">
+<META name="keywords" content="NS2中事件调度过程浅析 - ns2 - luozhenghu">
+<META name="description" content="中国最大的IT技术博客-ChinaUnix博客：NS2中事件调度过程浅析 - ns2 - luozhenghu">
+<TITLE>NS2中事件调度过程浅析 - ns2 - luozhenghu</TITLE>
+</HEAD><BODY leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" style="background:#C7C7C7;background-image:url()" align="center">
+
+<TABLE border="0" cellspacing="0" cellpadding="0" background="./NS2中事件调度过程浅析_files/tophem1.gif" style="border-collapse: collapse;height:25" height="25" width="760" align="center">
+<TBODY><TR> <TD id="tool-bar" align="left" nowrap="">
+&nbsp;
+<A href="http://blog.chinaunix.net/" target="_blank">博客首页</A>
+<A href="http://blog.chinaunix.net/register.php" target="_blank">注册</A>
+<A href="http://bbs.chinaunix.net/forumdisplay.php?fid=51" target="_blank">建议与交流</A> 
+<A href="http://blog.chinaunix.net/top/" target="_blank">排行榜</A>
+<A href="" target="_blank" onclick="NewWindows(&#39;http://blog.chinaunix.net/addlink.php?url=&#39;+location.href+&#39;&amp;title=&#39;+document.title);return false;">加入友情链接</A>
+
+</TD><FORM id="loginForm" method="get" target="_blank" action="http://blog.chinaunix.net/search.php"></FORM>
+<TD align="right" nowrap="">
+<IMG src="./NS2中事件调度过程浅析_files/userstar.php" id="starimg" border="0" alt="" width="55" height="12">
+<A href="http://blog.chinaunix.net/u2/star.php?blogid=87739" id="star" onclick="NewWindows(this.href);return false;" title="给此博客推荐值">推荐</A>
+<A href="http://blog.chinaunix.net/u2/complaint.php?blogid=87739" id="complaint" onclick="NewWindows(this.href);return false;" title="投诉此博客">投诉</A>
+
+ 搜索：<INPUT type="text" name="q" size="20"> <INPUT type="submit" value="搜索" class="button1"> <A href="http://blog.chinaunix.net/help/">帮助</A></TD>
+</TR>
+
+</TBODY></TABLE>
+<SCRIPT language="javascript">
+<!--
+
+navHover = function() {
+var lis = document.getElementById("navmenu").getElementsByTagName("LI");
+for (var i=0; i<lis.length; i++) {
+lis[i].onmouseover=function() {
+this.className+=" iehover";
+}
+lis[i].onmouseout=function() {
+this.className=this.className.replace(new RegExp(" iehover\\b"), "");
+}
+}
+}
+
+function NewWindows(shref){
+var xx=(window.screen.width-450)/2;
+var yy=(window.screen.height-200)/2;
+pp=window.open(shref,"win","menubar=no,location=no,resizable=no,scrollbars=no,status=no,left="+xx+",top="+yy+",Width=450,Height=200");
+}
+function $(s){return document.getElementById(s);}
+//-->
+</SCRIPT>
+<TABLE border="0" cellspacing="0" cellpadding="0" height="130" style="border-collapse: collapse;background-image:url(http://www.cublog.cn/templates/newdefault/images/bg_top.gif);background-repeat: " width="760" bgcolor="#ECFDFD" align="center">
+<TBODY><TR><TD align="center" width="500">
+<TABLE border="1" cellspacing="0" cellpadding="0" style="border-collapse: collapse" bordercolor="#2870C7">
+<TBODY><TR><TD bgcolor="#ECFDFD">
+<P style="line-height: 150&percnt;; margin: 5px">
+ <FONT style="font-size:14px" color="#1E8DC5">
+ 
+<B>
+ 
+ 
+ 
+ luozhenghu 
+ 
+ 
+</B>
+ 
+ </FONT></P>
+ 
+ </TD></TR>
+</TBODY></TABLE>
+</TD><TD width="260"></TR>
+</TBODY></TABLE>
+
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="760" align="center" height="27" bgcolor="#C3DDF6">
+<TBODY><TR><TD align="center">
+<A href="http://luozhenghu.cublog.cn/" class="list1" target="_blank">luozhenghu.cublog.cn</A>
+ 
+</TD><TD align="right" style="color:#2A5200" width="620">
+<UL id="navmenu"><LI class="ul0"><A href="http://control.cublog.cn/" target="_blank" class="list1">管理博客</A> </LI>
+
+<LI class="ul0"><A href="http://control.cublog.cn/article_new.php" target="_blank" class="list1">发表文章</A></LI>
+<LI class="ul0" style="width:40"><A href="http://blog.chinaunix.net/u2/87739/guestbook.html" class="list1">留言</A></LI>
+<LI class="ul0"><A href="http://blog.chinaunix.net/u2/87739/links.html" class="list1">收藏夹</A>
+<!-- 0 -->
+</LI>
+<LI class="ul0"><A href="http://blog.chinaunix.net/u2/87739/group.html" class="list1">博客圈</A></LI>
+<LI class="ul0" style="width:40"><A href="http://blog.chinaunix.net/u2/87739/music.html" class="list1">音乐</A>
+<!-- 0 -->
+</LI>
+<LI class="ul0" style="width:40"><A href="http://blog.chinaunix.net/u2/87739/photo.html" class="list1">相册</A>
+<!-- 0 -->
+</LI> 
+ 
+<LI class="ul0" style="width:40"><A href="http://blog.chinaunix.net/u2/87739/article.html" class="list1">文章</A>
+<UL class="ul1"><LI><A href="http://blog.chinaunix.net/u2/87739/article_101571.html"> &middot; 网络技术<!-- a101571 --></A><!-- 101571 --></LI>
+<LI><A href="http://blog.chinaunix.net/u2/87739/article_101532.html"> &middot; linux<!-- a101532 --></A><!-- 101532 --></LI>
+<LI><A href="http://blog.chinaunix.net/u2/87739/article_101531.html"> &middot; ns2<!-- a101531 --></A><!-- 101531 --></LI>
+</UL>
+
+</LI> 
+<LI class="ul0" style="width:40"><A href="http://blog.chinaunix.net/u2/87739/index.html" class="list1">首页</A></LI>
+</UL>
+</TD>
+<TD width="2">
+</TR>
+</TBODY></TABLE>
+<SCRIPT language="javascript">
+function $(s){return document.getElementById(s);}
+function ShowHideDiv(divid,iImg){
+if($(divid).style.display == "none"){
+iImg.src="../../templates/newdefault/images/dot2.gif";
+$(divid).style.display = "block";
+iImg.title="收起";
+}else{
+iImg.src="../../templates/newdefault/images/dot4.gif";
+$(divid).style.display = "none";
+iImg.title="展开";
+}
+}
+navHover();
+</SCRIPT>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;word-wrap:break-word;" width="760" bgcolor="#FFFFFF" align="center">
+<TBODY><TR><TD height="30" align="center">
+<FONT color="#02368D" style="font-size:14pt"><B>NS2中事件调度过程浅析</B></FONT><BR>
+</TD></TR>
+<TR><TD height="9" align="center"><IMG src="./NS2中事件调度过程浅析_files/right_line.gif" width="502" height="9" border="0" alt=""></TD></TR>
+<TR><TD align="center">
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;word-wrap:break-word;" width="740">
+<TBODY><TR><TD width="740">
+<DIV id="art" width="560" style="margin: 15px">
+
+<SPAN style="line-height: 180&percnt;;">最近研究NS2仿真工具，在学习源代码的过程中查看了一下NS2中的事件调度相关内容，对其流程有了一些粗浅认识，特分享如下。本人新手，以下内容有错误和不足之处恳请指教：）<BR>
+<BR>
+1.&nbsp; &nbsp;事件调度相关类简介<BR>
+类结构如图1所示：<BR>
+<P align="center"><IMG src="./NS2中事件调度过程浅析_files/116afe796be.jpg" onload="if(this.width&gt;screen.width*0.7) {this.resized=true; this.width=screen.width*0.7; this.alt=&#39;Click here to open new window\nCTRL+Mouse wheel to zoom in/out&#39;;}" onmouseover="if(this.width&gt;screen.width*0.7) {this.resized=true; this.width=screen.width*0.7; this.style.cursor=&#39;hand&#39;; this.alt=&#39;Click here to open new window\nCTRL+Mouse wheel to zoom in/out&#39;;}" onclick="if(!this.resized) {return true;} else {window.open(&#39;http://119.img.pp.sohu.com/images/blog/2007/11/6/17/26/116afe796be.jpg&#39;);}" onmousewheel="return imgzoom(this);" alt="" border="0"></P><BR>
+<P align="center">图1 NS2事件调度相关类结构图</P><BR>
+<BR>
+重要类简介：<BR>
+1)Handler类：<BR>
+&nbsp; 定义位置：~\Common\Scheduler[.h .cc]<BR>
+&nbsp; 作用概述：<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; NS2中用于执行对事件的处理动作（在handle()方法中实现）；<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; 作为Event类的属性，所有的事件都会保存用于处理自己的Handler，以供分派（dispatch）时使用；<BR>
+&nbsp; 属性/方法概述：<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; public virtual void handle(Event * event);&nbsp;&nbsp;<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; /*Handler类中的唯一一个方法，用于处理事件，其子类根据具体事件处理要求来实现（例如 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NSObject的handle方法）； */ <BR>
+<BR>
+2)Event类：<BR>
+&nbsp; 定义位置：~\Common\Scheduler[.h .cc]<BR>
+&nbsp; 作用概述：<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; 作为NS2事件调度机制的重要组成，是所有事件的父类（例如Packet类就是其子类）；<BR>
+&nbsp; 属性/方法概述：<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; public Event* next_;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; //用于生成事件链表<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; public Event* prev_;<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; public Handler* handler_;&nbsp; &nbsp;&nbsp; &nbsp;//用于记录该事件的处理器，也就记录了处理方法 <BR>
+<BR>
+3)NSObject类：<BR>&nbsp;
+定义位置：~\Common\Object[.h .cc]<BR>
+&nbsp; 作用概述：<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; 继承自Handler类<SPAN style="color: rgb(255, 1, 2);">(应该同时继承</SPAN></SPAN><SPAN style="line-height: 180&percnt;; color: rgb(255, 1, 2);">Handler类和TCLObject</SPAN><SPAN style="line-height: 180&percnt;;"><SPAN style="color: rgb(255, 1, 2);">类）</SPAN>，因此其子类可以作为参数传递给 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Scheduler::schedule()方法，以便之后处理事件时调用其handle方法；<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; 各种Connector类通常继承自此类；<BR>
+&nbsp; 属性/方法概述：<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; protected void handle(Event* e);&nbsp; &nbsp;/*实现父类handle方法，只有一句代码：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; recv((Packet*)e)；*/<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; protected void recv(Packet *p, const char*); //直接调用Packet::free(p)； <BR>
+<BR>
+（介绍了上面三个类，接着就可以看看它们是被什么类使用、如何被使用的了）<BR>
+4)Scheduler类：<BR>
+&nbsp; 定义位置：~\Common\Scheduler[.h .cc]<BR>
+&nbsp; 作用概述：<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; 一个以时间为触发条件的离散事件调度器，NS2事件调度机制的基础； <BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; 完成事件的出/入队列、维护、分发等；<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; 具有三个具体实现的子类（NS2通常默认为CalendarScheduler）；<BR>
+&nbsp; 属性/方法概述：<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; public void schedule(Handler*, Event*, double delay)&nbsp;&nbsp;//代码摘录如下<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;{<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;...//判断参数有效性<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;e-&gt;uid_ = uid_++;<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;e-&gt;handler_ = h;<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;double t = clock_ + delay;<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;e-&gt;time_ = t;<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;insert(e);<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;}<BR>
+/*从上即可知道schedule如何使用了Handle和Event类对象：设置事件id、处理时间以及handler，并将事件加入调度队列；也由此
+可以知道之前一直作为参数传递的Handler到此就被赋值给了Event的handler_，即实现了处理器和事件的&ldquo;绑定&rdquo;*/<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; public virtual void run();<BR>
+/*只要调度队列中还有事件待处理，则一直分派（dispatch）事件队列中的事件；*/<BR>
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; protected void dispatch(Event*, double);<BR>
+/*在特定时间调用与事件绑定的Handler的handle()方法处理事件自己；*/<BR>
+&nbsp;&nbsp;<BR>
+<BR>
+2.事件调度过程举例<BR>
+结合以上内容，举例说明Packet的从Channel传递到Phy的调度过程，如图2所示：<BR>
+<P align="center"><IMG src="./NS2中事件调度过程浅析_files/116afe7e429.jpg" onload="if(this.width&gt;screen.width*0.7) {this.resized=true; this.width=screen.width*0.7; this.alt=&#39;Click here to open new window\nCTRL+Mouse wheel to zoom in/out&#39;;}" onmouseover="if(this.width&gt;screen.width*0.7) {this.resized=true; this.width=screen.width*0.7; this.style.cursor=&#39;hand&#39;; this.alt=&#39;Click here to open new window\nCTRL+Mouse wheel to zoom in/out&#39;;}" onclick="if(!this.resized) {return true;} else {window.open(&#39;http://119.img.pp.sohu.com/images/blog/2007/11/6/17/26/116afe7e429.jpg&#39;);}" onmousewheel="return imgzoom(this);" alt="" border="0"></P><P align="center">图2 事件调度过程示意图</P>1)在Channel::sendUp(Packet* p, Phy
+*tifp)方法中最终会调用s.schedule(rifp, newp， propdelay)方法，其中s为Scheduler实例，rifp为Phy*，newp为Packet*；<BR>
+2)Scheduler获得该Packet后先判断参数有效性判断，然后执行newp-&gt;handler_ = rifp以保存该包的处理器（即Phy对象），然后insert入队列；<BR>
+3)当调度到该Packet后，执行dispatch(Event* p, double t)方法，进而执p-&gt;handler_-&gt;handle(p)方法处理Packet；<BR>
+4)上述handle(p)实际执行Phy类的handle(p)方法，最终会调用recv()方法；<BR>
+5)Phy类的recv()方法执行，根据包头中的方向字段，调用sendUp()或者sendDown()方法，此处是从下层Channel接收，因此调用sendUp()；<BR>
+6） sendUp()方法中再次包含schedule()方法，至此完成一次Packet调度。<BR>
+<BR>
+3.&nbsp;&nbsp;总结<BR>
+&nbsp; &nbsp;&nbsp; &nbsp; 从以上可以看出，各个协议层功能实体之间的事件（包）传递便是通过Scheduler调度完成的，各层实体之间并不直接调用彼此的方法，这就使得各实体之间的耦合更弱，从而便于各层协议替换和扩展。</SPAN>
+		
+		
+		
+</DIV>
+</TD></TR>
+</TBODY></TABLE>
+<P style="line-height: 150&percnt;; margin: 5px">
+ 
+ 
+</P>
+</TD></TR>
+ 
+ 
+<TR><TD height="25" align="center">
+<FONT color="#295200">发表于： 2008-12-07，修改于： 2008-12-07 15:18，已浏览135次，有评论0条</FONT> <A href="http://blog.chinaunix.net/u2/star.php?blogid=87739&artid=1684616" id="star" onclick="NewWindows(this.href);return false;" title="推荐这篇文章">推荐</A>
+<A href="http://blog.chinaunix.net/u2/complaint.php?blogid=87739&artid=1684616" id="complaint" onclick="NewWindows(this.href);return false;" title="投诉这篇文章">投诉</A>
+</TD></TR>
+
+<TR><TD height="9" align="center"><IMG src="./NS2中事件调度过程浅析_files/line1.gif" width="702" height="13" border="0" alt=""></TD></TR>
+<TR><TD>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;color:#02368D" width="95&percnt;" align="center">
+</TABLE>
+
+
+<BR>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="95&percnt;" align="center">
+<TBODY><TR height="25"><TD width="25"><IMG src="./NS2中事件调度过程浅析_files/dot.gif" width="16" height="16" border="0" alt=""></TD>
+<TD width="80"> <B>给我留言</B>
+</TD><TD id="pagelist" width="405">
+</TR>
+<TR><TD colspan="3" height="2" bgcolor="#90BAED"></TR>
+<TR><TD colspan="3" height="2"></TR>
+</TBODY></TABLE>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="500" align="center">
+
+<TBODY><TR><TD height="25">
+ 
+<IFRAME name="comment" src="./NS2中事件调度过程浅析_files/comment.htm" width="640" height="160" frameborder="0"></IFRAME>
+ 
+</TD></TR>
+
+</TBODY></TABLE>
+</TD></TR>
+</TBODY></TABLE>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="760" bgcolor="#FFFFFF" align="center">
+<TBODY><TR><TD height="3" bgcolor="#FFFFFF"></TR>
+<TR><TD height="1" bgcolor="#DDDDDD"></TR>
+<TR><TD height="3" bgcolor="#FFFFFF"></TR>
+<TR><TD align="center"> 
+版权所有 ChinaUnix.net  页面生成时间：0.02326</TD></TR>
+</TBODY></TABLE>
+
+</BODY></HTML>

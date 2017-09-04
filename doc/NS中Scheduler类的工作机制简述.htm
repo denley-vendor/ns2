@@ -1,0 +1,505 @@
+
+<!-- saved from url=(0054)http://blog.chinaunix.net/u1/33444/showart_272923.html -->
+<HTML><HEAD><META http-equiv="Content-Type" content="text/html; charset=GB2312">
+
+<LINK rel="stylesheet" href="./NS中Scheduler类的工作机制简述_files/index.css">
+<LINK rel="alternate" type="application/rss+xml" title="ChinaUnix Blog RSS Feed" href="http://blog.chinaunix.net/u/rss.php?id=33444">
+<META name="keywords" content="NS中Scheduler类的工作机制简述 - NS2网络模拟 - 爱生活，爱CU。">
+<META name="description" content="中国最大的IT技术博客-ChinaUnix博客：NS中Scheduler类的工作机制简述 - NS2网络模拟 - 爱生活，爱CU。">
+<TITLE>NS中Scheduler类的工作机制简述 - NS2网络模拟 - 爱生活，爱CU。</TITLE>
+</HEAD><BODY leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" style="background:#FFFFFF;background-image:url()" align="center">
+
+
+<TABLE border="0" cellspacing="0" cellpadding="0" background="./NS中Scheduler类的工作机制简述_files/tophem1.gif" style="border-collapse: collapse;height:25" height="25" width="100&percnt;">
+<TBODY><TR> <TD id="tool-bar" align="left" width="540" nowrap="">
+&nbsp;
+<A href="http://blog.chinaunix.net/" target="_blank">博客首页</A>
+<A href="http://blog.chinaunix.net/register.php" target="_blank">注册</A>
+<A href="http://bbs.chinaunix.net/forumdisplay.php?fid=51" target="_blank">建议与交流</A> 
+<A href="http://blog.chinaunix.net/top/" target="_blank">排行榜</A>
+<A href="" target="_blank" onclick="NewWindows(&#39;http://www.cublog.cn/addlink.php?url=&#39;+location.href+&#39;&amp;title=&#39;+document.title);return false;">加入友情链接</A>
+
+</TD><FORM id="loginForm" method="get" target="_blank" action="http://blog.chinaunix.net/search.php"></FORM>
+<TD align="right" nowrap="">
+<IMG src="./NS中Scheduler类的工作机制简述_files/userstar.php" id="starimg" border="0" alt="" width="55" height="12">
+<A href="http://blog.chinaunix.net/u2/star.php?blogid=33444" id="star" onclick="NewWindows(this.href);return false;" title="给此博客推荐值">推荐</A>
+<A href="http://blog.chinaunix.net/u2/complaint.php?blogid=33444" id="complaint" onclick="NewWindows(this.href);return false;" title="投诉此博客">投诉</A>
+
+ 搜索：<INPUT type="text" name="q" size="20"> <INPUT type="submit" value="搜索" class="button1"> <A href="http://blog.chinaunix.net/help/">帮助</A></TD>
+</TR>
+<TR><TD colspan="2">
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" bordercolor="#111111" width="1000">
+<TBODY><TR><TD width="1000"></TR>
+</TBODY></TABLE>
+</TD></TR>
+</TBODY></TABLE>
+<SCRIPT language="javascript">
+<!--
+
+navHover = function() {
+var lis = document.getElementById("navmenu").getElementsByTagName("LI");
+for (var i=0; i<lis.length; i++) {
+lis[i].onmouseover=function() {
+this.className+=" iehover";
+}
+lis[i].onmouseout=function() {
+this.className=this.className.replace(new RegExp(" iehover\\b"), "");
+}
+}
+}
+
+function NewWindows(shref){
+var xx=(window.screen.width-450)/2;
+var yy=(window.screen.height-200)/2;
+pp=window.open(shref,"win","menubar=no,location=no,resizable=no,scrollbars=no,status=no,left="+xx+",top="+yy+",Width=450,Height=200");
+}
+function $(s){return document.getElementById(s);}
+//-->
+</SCRIPT>
+<TABLE border="0" cellspacing="0" cellpadding="0" height="80" style="border-collapse: collapse;background-image:url();background-repeat: " width="100&percnt;" bgcolor="#204689">
+<TBODY><TR><TD align="center" width="200">
+<P style="line-height: 150&percnt;; margin: 5px">
+ <FONT style="font-size:14px" color="#FFFFFF">
+ 
+<B>
+ 
+ 
+ 
+ 爱生活，爱CU。 
+ 
+ 
+</B>
+ 
+ </FONT></P>
+ 
+</TD><TD style="color:#AAC6F6">
+</TD></TR>
+</TBODY></TABLE>
+
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="100&percnt;" height="27" bgcolor="#EEEEEE">
+<TBODY><TR><TD>&nbsp;
+<A href="http://walter2001.cublog.cn/" class="list1" target="_blank">walter2001.cublog.cn</A>
+ 
+</TD><TD align="right" style="color:#2A5200" width="680">
+<UL id="navmenu"><LI class="ul0"><A href="http://control.cublog.cn/" target="_blank" class="list1">管理博客</A> </LI>
+
+<LI class="ul0"><A href="http://control.cublog.cn/article_new.php" target="_blank" class="list1">发表文章</A></LI>
+<LI class="ul0"><A href="http://blog.chinaunix.net/u1/33444/guestbook.html" class="list1">留言</A></LI>
+<LI class="ul0"><A href="http://blog.chinaunix.net/u1/33444/links.html" class="list1">收藏夹</A>
+<UL class="ul1"><LI><A href="http://blog.chinaunix.net/u1/33444/links_10958.html"> &middot; NS2网络模拟<!-- a10958 --></A><!-- 10958 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/links_11041.html"> &middot; Linux网站<!-- a11041 --></A><!-- 11041 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/links_10965.html"> &middot; C_C++相关<!-- a10965 --></A><!-- 10965 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/links_11029.html"> &middot; Linux软件<!-- a11029 --></A><!-- 11029 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/links_11604.html"> &middot; 网文收藏<!-- a11604 --></A><!-- 11604 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/links_11058.html"> &middot; 企业招聘<!-- a11058 --></A><!-- 11058 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/links_10963.html"> &middot; 友情链接<!-- a10963 --></A><!-- 10963 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/links_16258.html"> &middot; Windows软件<!-- a16258 --></A><!-- 16258 --></LI>
+</UL>
+
+</LI>
+<LI class="ul0"><A href="http://blog.chinaunix.net/u1/33444/group.html" class="list1">博客圈</A></LI>
+<LI class="ul0"><A href="http://blog.chinaunix.net/u1/33444/music.html" class="list1">音乐</A>
+<!-- 0 -->
+</LI>
+<LI class="ul0"><A href="http://blog.chinaunix.net/u1/33444/photo.html" class="list1">相册</A>
+<UL class="ul1"><LI><A href="http://blog.chinaunix.net/u1/33444/photo_6960.html"> &middot; Linux<!-- a6960 --></A><!-- 6960 --></LI>
+</UL>
+
+</LI> 
+ 
+<LI class="ul0"><A href="http://blog.chinaunix.net/u1/33444/article.html" class="list1">文章</A>
+<UL class="ul1"><LI><A href="http://blog.chinaunix.net/u1/33444/article_50658.html"> &middot; Linux使用<!-- a50658 --></A><!-- 50658 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/article_67436.html"> &middot; Linux开发<!-- a67436 --></A><!-- 67436 --></LI>
+<LI><A href="http://blog.chinaunix.net/u1/33444/article_50666.html"> &middot; NS2网络模拟<!-- a50666 --></A><!-- 50666 --></LI>
+</UL>
+
+</LI> 
+<LI class="ul0"><A href="http://blog.chinaunix.net/u1/33444/index.html" class="list1">首页</A></LI>
+</UL>
+</TD>
+<TD width="2">
+</TR>
+</TBODY></TABLE>
+<SCRIPT language="javascript">
+function $(s){return document.getElementById(s);}
+function ShowHideDiv(divid,iImg){
+if($(divid).style.display == "none"){
+iImg.src="../../templates/tech/images/dot2.gif";
+$(divid).style.display = "block";
+iImg.title="收起";
+}else{
+iImg.src="../../templates/tech/images/dot4.gif";
+$(divid).style.display = "none";
+iImg.title="展开";
+}
+}
+if (window.attachEvent) window.attachEvent("onload", navHover);
+</SCRIPT>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="100&percnt;">
+<TBODY><TR><TD width="235" valign="top" align="center">
+<BR>
+
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" bordercolor="#111111" width="220">
+<TBODY><TR><TD><IMG src="./NS中Scheduler类的工作机制简述_files/left_bg_top.gif" border="0" alt=""></TD></TR>
+<TR><TD bgcolor="#EDF2F2" height="25" align="center">
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" bordercolor="#111111" width="200">
+<TBODY><TR><TD width="180" align="center"><FONT style="font-size:10pt" color="#1F72D0"><B>关于作者</B></FONT></TD><TD width="20"><IMG src="./NS中Scheduler类的工作机制简述_files/dot2.gif" border="0" title="收起" onclick="ShowHideDiv(&#39;aboutwriter&#39;,this);return false;"></TD></TR>
+</TBODY></TABLE>
+
+</TD></TR>
+<TR><TD bgcolor="#D2DEE2" height="1"></TR>
+<TR><TD bgcolor="#FFFFFF" height="1"></TR>
+
+<TR><TD style="color:#02368D" bgcolor="F3F6F6" align="center">
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;word-wrap:break-word;table-layout: fixed;color:#02368D;" width="200" id="aboutwriter">
+<TBODY><TR><TD align="center">
+<A href="http://blog.chinaunix.net/u1/33444/up_user.jpg" target="_blank"><IMG src="./NS中Scheduler类的工作机制简述_files/up_user_pre.jpg" border="0" alt=""></A>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;word-wrap:break-word;" width="200">
+<TBODY><TR><TD width="200">
+<PRE style="line-height: 150&percnt;; margin: 5px; " width="25">Email: ydsong2007@163.com</PRE>	
+</TD></TR>
+</TBODY></TABLE>
+</TD></TR>
+</TBODY></TABLE>
+</TD></TR>
+<TR><TD>
+<TABLE bgcolor="#FFFFFF" cellspacing="0" cellpadding="0" style="border-collapse: collapse;border: 1px solid #D2DEE2; padding: 1" align="center" width="220" border="0">
+<TBODY><TR height="20" bgcolor="#EDF2F2">
+<TD align="center" width="14" style="cursor: hand; color: #1F72D0;font-size:9pt;" title="上一年" onclick="pushBtm(&#39;YU&#39;)">||</TD>
+<TD align="center" width="14" style="cursor: hand; color: #1F72D0;font-size:9pt" title="上一月" onclick="pushBtm(&#39;MU&#39;)">&lt;&lt;</TD>
+<TD align="center" nowrap="nowrap" id="YMBG" style="color: #1F72D0;font-size:9pt">2009年6月</TD>
+<TD align="center" nowrap="nowrap" id="GZ" style="color: #1F72D0;font-size:9pt">己丑年（牛）</TD>
+<TD align="center" width="14" style="cursor: hand; color: #1F72D0;font-size:9pt" title="下一月" onclick="pushBtm(&#39;MD&#39;)">&gt;&gt;</TD>
+<TD align="center" width="14" style="cursor: hand; color: #1F72D0;font-size:9pt" title="下一年" onclick="pushBtm(&#39;YD&#39;)">||</TD>
+</TR>
+<TR><TD colspan="6">
+<DIV id="ttdiv" align="center" width="210"><TABLE cellspacing="0" cellpadding="0" width="216" style="border-collapse: collapse" bgcolor="#F6F8F8" border="0" id="datetable">
+	  <TBODY><TR align="center" bgcolor="#EDF2F2" style="color:#A6AA97">
+		<TD width="32" height="24">日</TD>
+		<TD width="32">一</TD>
+		<TD width="32">二</TD>
+		<TD width="32">三</TD>
+		<TD width="32">四</TD>
+		<TD width="32">五</TD>
+		<TD width="32">六</TD></TR>
+	  <TR align="center">
+	  <TD nowrap="nowrap">
+<FONT id="SD0" size="2" face="Arial Black" color="#CDBC71" title="" class=""></FONT><BR><FONT id="LD0" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD1" size="2" face="Arial Black" color="#A6AA97" title="儿童节 " class="">1</FONT><BR><FONT id="LD1" style="font-size:7pt"><FONT color="#6FC2FF">儿童节 </FONT></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD2" size="2" face="Arial Black" color="#A6AA97" title="初十" class="">2</FONT><BR><FONT id="LD2" style="font-size:7pt">初十</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD3" size="2" face="Arial Black" color="#A6AA97" title="十一" class="">3</FONT><BR><FONT id="LD3" style="font-size:7pt">十一</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD4" size="2" face="Arial Black" color="#A6AA97" title="十二" class="todyaColor">4</FONT><BR><FONT id="LD4" style="font-size:7pt">十二</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD5" size="2" face="Arial Black" color="#A6AA97" title="芒种" class="">5</FONT><BR><FONT id="LD5" style="font-size:7pt"><FONT color="limegreen">芒种</FONT></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD6" size="2" face="Arial Black" color="#CDBC71" title="十四" class="">6</FONT><BR><FONT id="LD6" style="font-size:7pt">十四</FONT></TD>	  </TR>
+	  <TR align="center">
+	  <TD nowrap="nowrap">
+<FONT id="SD7" size="2" face="Arial Black" color="#CDBC71" title="十五" class="" style="color: rgb(205, 188, 113); ">7</FONT><BR><FONT id="LD7" style="font-size:7pt">十五</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD8" size="2" face="Arial Black" color="#A6AA97" title="十六" class="">8</FONT><BR><FONT id="LD8" style="font-size:7pt">十六</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD9" size="2" face="Arial Black" color="#A6AA97" title="十七" class="">9</FONT><BR><FONT id="LD9" style="font-size:7pt">十七</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD10" size="2" face="Arial Black" color="#A6AA97" title="十八" class="">10</FONT><BR><FONT id="LD10" style="font-size:7pt">十八</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD11" size="2" face="Arial Black" color="#A6AA97" title="十九" class="">11</FONT><BR><FONT id="LD11" style="font-size:7pt">十九</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD12" size="2" face="Arial Black" color="#A6AA97" title="二十" class="">12</FONT><BR><FONT id="LD12" style="font-size:7pt">二十</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD13" size="2" face="Arial Black" color="#CDBC71" title="廿一" class="" style="color: rgb(205, 188, 113); ">13</FONT><BR><FONT id="LD13" style="font-size:7pt">廿一</FONT></TD>	  </TR>
+	  <TR align="center">
+	  <TD nowrap="nowrap">
+<FONT id="SD14" size="2" face="Arial Black" color="#CDBC71" title="廿二" class="" style="color: rgb(205, 188, 113); ">14</FONT><BR><FONT id="LD14" style="font-size:7pt">廿二</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD15" size="2" face="Arial Black" color="#A6AA97" title="廿三" class="">15</FONT><BR><FONT id="LD15" style="font-size:7pt">廿三</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD16" size="2" face="Arial Black" color="#A6AA97" title="廿四" class="">16</FONT><BR><FONT id="LD16" style="font-size:7pt">廿四</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD17" size="2" face="Arial Black" color="#A6AA97" title="廿五" class="">17</FONT><BR><FONT id="LD17" style="font-size:7pt">廿五</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD18" size="2" face="Arial Black" color="#A6AA97" title="廿六" class="">18</FONT><BR><FONT id="LD18" style="font-size:7pt">廿六</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD19" size="2" face="Arial Black" color="#A6AA97" title="廿七" class="">19</FONT><BR><FONT id="LD19" style="font-size:7pt">廿七</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD20" size="2" face="Arial Black" color="#CDBC71" title="廿八" class="">20</FONT><BR><FONT id="LD20" style="font-size:7pt">廿八</FONT></TD>	  </TR>
+	  <TR align="center">
+	  <TD nowrap="nowrap">
+<FONT id="SD21" size="2" face="Arial Black" color="#CDBC71" title="夏至" class="" style="color: rgb(205, 188, 113); ">21</FONT><BR><FONT id="LD21" style="font-size:7pt"><FONT color="limegreen">夏至</FONT></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD22" size="2" face="Arial Black" color="#A6AA97" title="三十" class="">22</FONT><BR><FONT id="LD22" style="font-size:7pt">三十</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD23" size="2" face="Arial Black" color="#A6AA97" title="&lt;b&gt;闰5月大&lt;/b&gt;" class="">23</FONT><BR><FONT id="LD23" style="font-size:7pt"><B>闰5月大</B></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD24" size="2" face="Arial Black" color="#A6AA97" title="初二" class="">24</FONT><BR><FONT id="LD24" style="font-size:7pt">初二</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD25" size="2" face="Arial Black" color="#A6AA97" title="初三" class="">25</FONT><BR><FONT id="LD25" style="font-size:7pt">初三</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD26" size="2" face="Arial Black" color="#A6AA97" title="初四" class="">26</FONT><BR><FONT id="LD26" style="font-size:7pt">初四</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD27" size="2" face="Arial Black" color="#CDBC71" title="初五" class="" style="color: rgb(205, 188, 113); ">27</FONT><BR><FONT id="LD27" style="font-size:7pt">初五</FONT></TD>	  </TR>
+	  <TR align="center">
+	  <TD nowrap="nowrap">
+<FONT id="SD28" size="2" face="Arial Black" color="#CDBC71" title="初六" class="" style="color: rgb(205, 188, 113); ">28</FONT><BR><FONT id="LD28" style="font-size:7pt">初六</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD29" size="2" face="Arial Black" color="#A6AA97" title="初七" class="">29</FONT><BR><FONT id="LD29" style="font-size:7pt">初七</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD30" size="2" face="Arial Black" color="#A6AA97" title="初八" class="">30</FONT><BR><FONT id="LD30" style="font-size:7pt">初八</FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD31" size="2" face="Arial Black" color="#A6AA97" title="" class=""></FONT><BR><FONT id="LD31" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD32" size="2" face="Arial Black" color="#A6AA97" title="" class=""></FONT><BR><FONT id="LD32" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD33" size="2" face="Arial Black" color="#A6AA97" title="" class=""></FONT><BR><FONT id="LD33" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD34" size="2" face="Arial Black" color="#CDBC71" title="" class=""></FONT><BR><FONT id="LD34" style="font-size:7pt"></FONT></TD>	  </TR>
+	  <TR align="center">
+	  <TD nowrap="nowrap">
+<FONT id="SD35" size="2" face="Arial Black" color="#CDBC71" title="" class=""></FONT><BR><FONT id="LD35" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD36" size="2" face="Arial Black" color="#A6AA97" title="" class=""></FONT><BR><FONT id="LD36" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD37" size="2" face="Arial Black" color="#A6AA97" title="" class=""></FONT><BR><FONT id="LD37" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD38" size="2" face="Arial Black" color="#A6AA97" title="" class=""></FONT><BR><FONT id="LD38" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD39" size="2" face="Arial Black" color="#A6AA97" title="" class=""></FONT><BR><FONT id="LD39" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD40" size="2" face="Arial Black" color="#A6AA97" title="" class=""></FONT><BR><FONT id="LD40" style="font-size:7pt"></FONT></TD>	  <TD nowrap="nowrap">
+<FONT id="SD41" size="2" face="Arial Black" color="#CDBC71" title="" class=""></FONT><BR><FONT id="LD41" style="font-size:7pt"></FONT></TD>	  </TR>
+</TBODY></TABLE></DIV>
+</TD></TR>
+<TR><TD colspan="6" height="1"></TR>
+</TBODY></TABLE>
+
+<SCRIPT src="./NS中Scheduler类的工作机制简述_files/mdate.js"></SCRIPT>
+<SCRIPT language="javascript">
+var arrArtdate=new Array('20070314','20070315','20070316','20070317','20070318','20070407','20070408','20070916','20071002','20090405');
+
+initial("ttdiv");
+
+</SCRIPT>
+
+</TD></TR>
+<TR><TD bgcolor="#D2DEE2" height="1"></TR>
+<TR><TD bgcolor="#FFFFFF" height="1"></TR>
+<TR><TD bgcolor="#EDF2F2" height="25" align="center">
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" bordercolor="#111111" width="200">
+<TBODY><TR><TD width="180" align="center"><FONT style="font-size:10pt" color="#1F72D0"><B>我的分类</B></FONT></TD><TD width="20"><IMG src="./NS中Scheduler类的工作机制简述_files/dot2(1).gif" border="0" title="收起" onclick="ShowHideDiv(&#39;lefttree&#39;,this);return false;"></TD></TR>
+</TBODY></TABLE>
+
+</TD></TR>
+<TR><TD bgcolor="#D2DEE2" height="1"></TR>
+<TR><TD bgcolor="#FFFFFF" height="1"></TR>
+<TR><TD style="color:#02368D" bgcolor="F3F6F6">
+<SCRIPT src="./NS中Scheduler类的工作机制简述_files/tree.js"></SCRIPT>
+<DIV style="overflow:auto;scrollbar-face-color: #EEEEEE;scrollbar-highlight-color: #FFFFFF;scrollbar-shadow-color: #CCCCCC;scrollbar-3dlight-color: #D1D7DC;scrollbar-arrow-color:#006699;scrollbar-track-color: #CCCCCC;scrollbar-darkshadow-color: #EEDFE7;" id="lefttree"><DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(1,true);"><IMG id="signContentsTree1" src="./NS中Scheduler类的工作机制简述_files/Minus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/article.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(1,false);"><IMG id="iconContentsTree1" src="./NS中Scheduler类的工作机制简述_files/OpenFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/article.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(1,false);">我的文章分类</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree1" style="display:block;"><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(5,true);"><IMG id="signContentsTree5" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/article_50658.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(5,false);"><IMG id="iconContentsTree5" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/article_50658.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(5,false);">Linux使用</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree5" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(6,true);"><IMG id="signContentsTree6" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/article_67436.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(6,false);"><IMG id="iconContentsTree6" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/article_67436.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(6,false);">Linux开发</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree6" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(7,true);"><IMG id="signContentsTree7" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/article_50666.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(7,false);"><IMG id="iconContentsTree7" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/article_50666.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(7,false);">NS2网络模拟</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree7" style="display:none;"></DIV></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(2,true);"><IMG id="signContentsTree2" src="./NS中Scheduler类的工作机制简述_files/Minus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/photo.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(2,false);"><IMG id="iconContentsTree2" src="./NS中Scheduler类的工作机制简述_files/OpenFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/photo.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(2,false);">我的图片分类</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree2" style="display:block;"><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(8,true);"><IMG id="signContentsTree8" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/photo_6960.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(8,false);"><IMG id="iconContentsTree8" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/photo_6960.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(8,false);">Linux</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree8" style="display:none;"></DIV></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(3,true);"><IMG id="signContentsTree3" src="./NS中Scheduler类的工作机制简述_files/Minus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(3,false);"><IMG id="iconContentsTree3" src="./NS中Scheduler类的工作机制简述_files/OpenFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(3,false);">我的链接分类</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree3" style="display:block;"><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(9,true);"><IMG id="signContentsTree9" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links_10958.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(9,false);"><IMG id="iconContentsTree9" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links_10958.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(9,false);">NS2网络模拟</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree9" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(10,true);"><IMG id="signContentsTree10" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links_11041.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(10,false);"><IMG id="iconContentsTree10" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links_11041.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(10,false);">Linux网站</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree10" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(11,true);"><IMG id="signContentsTree11" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links_10965.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(11,false);"><IMG id="iconContentsTree11" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links_10965.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(11,false);">C_C++相关</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree11" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(12,true);"><IMG id="signContentsTree12" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links_11029.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(12,false);"><IMG id="iconContentsTree12" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links_11029.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(12,false);">Linux软件</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree12" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(13,true);"><IMG id="signContentsTree13" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links_11604.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(13,false);"><IMG id="iconContentsTree13" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links_11604.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(13,false);">网文收藏</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree13" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(14,true);"><IMG id="signContentsTree14" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links_11058.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(14,false);"><IMG id="iconContentsTree14" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links_11058.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(14,false);">企业招聘</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree14" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(15,true);"><IMG id="signContentsTree15" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links_10963.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(15,false);"><IMG id="iconContentsTree15" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links_10963.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(15,false);">友情链接</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree15" style="display:none;"></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><IMG src="./NS中Scheduler类的工作机制简述_files/TreeBlank.gif" alt="" width="19" height="19" style="border: 0px;"><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(16,true);"><IMG id="signContentsTree16" src="./NS中Scheduler类的工作机制简述_files/Plus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/links_16258.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(16,false);"><IMG id="iconContentsTree16" src="./NS中Scheduler类的工作机制简述_files/ClosedFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/links_16258.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(16,false);">Windows软件</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree16" style="display:none;"></DIV></DIV><DIV><TABLE border="0" cellspacing="0" cellpadding="0"><TBODY><TR><TD valign="middle" nowrap=""><A href="javascript:void(0)" onclick="javascript: ContentsTree.OnNodeClick(4,true);"><IMG id="signContentsTree4" src="./NS中Scheduler类的工作机制简述_files/Minus.gif" alt="" width="19" height="19" style="border: 0px;"></A><A href="http://blog.chinaunix.net/u1/33444/music.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(4,false);"><IMG id="iconContentsTree4" src="./NS中Scheduler类的工作机制简述_files/OpenFolder.gif" alt="" width="19" height="19" style="border: 0px;"></A></TD><TD valign="middle" nowrap=""><A href="http://blog.chinaunix.net/u1/33444/music.html" class="listtree" onclick="javascript: ContentsTree.OnNodeClick(4,false);">我的音乐分类</A></TD></TR></TBODY></TABLE></DIV><DIV id="divContentsTree4" style="display:block;"></DIV></DIV></DIV>
+<SCRIPT language="javascript">
+ContentsTree = new CTree("ContentsTree");
+ContentsTree.bAutoClose = false;
+ContentsTree.stTarget = "";
+a0 = ContentsTree.AddNode(null, "我的文章分类", "article.html");
+a0.bOpen=true;
+p0 = ContentsTree.AddNode(null, "我的图片分类", "photo.html");
+p0.bOpen=true;
+f0 = ContentsTree.AddNode(null, "我的链接分类", "links.html");
+f0.bOpen=true;
+m0 = ContentsTree.AddNode(null, "我的音乐分类", "music.html");
+m0.bOpen=true;
+a50658 = ContentsTree.AddNode(a0, "Linux使用", "article_50658.html");
+a67436 = ContentsTree.AddNode(a0, "Linux开发", "article_67436.html");
+a50666 = ContentsTree.AddNode(a0, "NS2网络模拟", "article_50666.html");
+ 
+p6960 = ContentsTree.AddNode(p0, "Linux", "photo_6960.html");
+ 
+f10958 = ContentsTree.AddNode(f0, "NS2网络模拟", "links_10958.html");
+f11041 = ContentsTree.AddNode(f0, "Linux网站", "links_11041.html");
+f10965 = ContentsTree.AddNode(f0, "C_C++相关", "links_10965.html");
+f11029 = ContentsTree.AddNode(f0, "Linux软件", "links_11029.html");
+f11604 = ContentsTree.AddNode(f0, "网文收藏", "links_11604.html");
+f11058 = ContentsTree.AddNode(f0, "企业招聘", "links_11058.html");
+f10963 = ContentsTree.AddNode(f0, "友情链接", "links_10963.html");
+f16258 = ContentsTree.AddNode(f0, "Windows软件", "links_16258.html");
+ 
+ 
+//document.write(ContentsTree.GetHTMLCode());
+document.getElementById("lefttree").innerHTML=ContentsTree.GetHTMLCode();
+</SCRIPT>	
+</TD></TR>
+<TR><TD bgcolor="#D2DEE2" height="1"></TR>
+<TR><TD bgcolor="#FFFFFF" height="1"></TR>
+
+<TR><TD><IMG src="./NS中Scheduler类的工作机制简述_files/left_bg_bottom.gif" border="0" alt=""></TD></TR>
+
+</TBODY></TABLE>
+
+
+</TD><TD width="10"><TD valign="top" align="center">
+
+<BR>
+
+
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="100&percnt;">
+<TBODY><TR><TD width="11" height="11"><IMG src="./NS中Scheduler类的工作机制简述_files/g_left_top.gif" border="0" alt=""></TD>
+<TD bgcolor="#DDDDDD" width="99&percnt;" height="11">
+<TD width="11" height="11"><IMG src="./NS中Scheduler类的工作机制简述_files/g_right_top.gif" border="0" alt=""></TD>
+</TR>
+
+<TR><TD colspan="3" width="100&percnt;" bgcolor="#DDDDDD" align="center" valign="top"> 
+
+
+
+
+
+
+
+
+<BR>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="96&percnt;">
+<TBODY><TR><TD width="7" height="7"><IMG src="./NS中Scheduler类的工作机制简述_files/w_left_top.gif" border="0" alt=""></TD>
+<TD bgcolor="#F3F3F3" width="100&percnt;">
+<TD width="7" height="7"><IMG src="./NS中Scheduler类的工作机制简述_files/w_right_top.gif" border="0" alt=""></TD>
+</TR>
+<TR><TD colspan="3" bgcolor="#F3F3F3" align="center">
+
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;word-wrap:break-word;" width="100&percnt;">
+<TBODY><TR><TD height="25" align="center">
+<FONT color="#02368D" style="font-size:14pt"><B>NS中Scheduler类的工作机制简述</B></FONT><BR>
+</TD></TR>
+<TR><TD bgcolor="#D2DEE2" height="1"></TR>
+<TR><TD bgcolor="#FFFFFF" height="1"></TR>
+<TR><TD align="center">
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;word-wrap:break-word;" width="100&percnt;">
+<TBODY><TR><TD width="100&percnt;">
+<DIV id="art" width="100&percnt;" style=" margin: 15px">
+
+				<SPAN style="font-weight: bold;">
+
+Scheduler调度的对象是一个个Event对象，比如Packet类就是Event类的派生类。先看Event类有什么：</SPAN><BR><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);"><SPAN style="color: rgb(0, 0, 255);">class</SPAN> Event <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 255);">public</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> next_<SPAN style="color: rgb(0, 0, 204);">;</SPAN>        <SPAN style="color: rgb(255, 153, 0);">/* event list */</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> prev_<SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;Handler<SPAN style="color: rgb(0, 0, 204);">*</SPAN> handler_<SPAN style="color: rgb(0, 0, 204);">;</SPAN>    <SPAN style="color: rgb(255, 153, 0);">/* handler to call when event ready */</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">double</SPAN> time_<SPAN style="color: rgb(0, 0, 204);">;</SPAN>        <SPAN style="color: rgb(255, 153, 0);">/* time at which event is ready */</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;scheduler_uid_t uid_<SPAN style="color: rgb(0, 0, 204);">;</SPAN>    <SPAN style="color: rgb(255, 153, 0);">/* unique ID */</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;Event<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">:</SPAN> time_<SPAN style="color: rgb(0, 0, 204);">(</SPAN>0<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">,</SPAN> uid_<SPAN style="color: rgb(0, 0, 204);">(</SPAN>0<SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><SPAN style="color: rgb(0, 0, 204);">}</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 204);">}</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR><SPAN style="font-weight: bold;">可见，该类只有5个成员变量，最重要的是后面的三个。</SPAN><BR><BR><SPAN style="font-weight: bold;">Handler类是所有事件Handler的基类，当事件的调度时间到达时，该事件被传递给必须处理它的Handler。</SPAN><BR><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);"><SPAN style="color: rgb(0, 0, 255);">class</SPAN> Handler <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+&nbsp;<SPAN style="color: rgb(0, 0, 255);">public</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 204);">~</SPAN>Handler <SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><SPAN style="color: rgb(0, 0, 204);">}</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 255);">void</SPAN> handle<SPAN style="color: rgb(0, 0, 204);">(</SPAN>Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> event<SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">=</SPAN> 0<SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 204);">}</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR><SPAN style="font-weight: bold;">可见该类只有一个纯虚函数的虚基类，子类继承该类，使用handle()处理到时的事件。</SPAN><BR><BR><SPAN style="font-weight: bold;">现在看Scheduler类本身：</SPAN><BR><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);"><SPAN style="color: rgb(0, 0, 255);">class</SPAN> Scheduler <SPAN style="color: rgb(0, 0, 204);">:</SPAN> <SPAN style="color: rgb(0, 0, 255);">public</SPAN> TclObject <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 255);">public</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 153, 2);">static Scheduler&amp; instance()</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">return</SPAN> <SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">*</SPAN>instance_<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN>        <SPAN style="color: rgb(255, 153, 0);">// general access to scheduler</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 204);">}</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 153, 2);">void schedule(Handler*, Event*, double delay);</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// sched later event</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 153, 2);">virtual void run();</SPAN>            <SPAN style="color: rgb(255, 153, 0);">// execute the simulator</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 255);">void</SPAN> cancel<SPAN style="color: rgb(0, 0, 204);">(</SPAN>Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">=</SPAN> 0<SPAN style="color: rgb(0, 0, 204);">;</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// cancel event</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 255);">void</SPAN> insert<SPAN style="color: rgb(0, 0, 204);">(</SPAN>Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">=</SPAN> 0<SPAN style="color: rgb(0, 0, 204);">;</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// schedule event</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> lookup<SPAN style="color: rgb(0, 0, 204);">(</SPAN>scheduler_uid_t uid<SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">=</SPAN> 0<SPAN style="color: rgb(0, 0, 204);">;</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// look for event</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> <SPAN style="color: rgb(255, 0, 0);">deque</SPAN><SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">=</SPAN> 0<SPAN style="color: rgb(0, 0, 204);">;</SPAN>        <SPAN style="color: rgb(255, 153, 0);">// next event (removes from q)</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 255);">const</SPAN> Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> head<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">=</SPAN> 0<SPAN style="color: rgb(0, 0, 204);">;</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// next event (not removed from q)</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">double</SPAN> <SPAN style="color: rgb(255, 0, 0);">clock</SPAN><SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 255);">const</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN>            <SPAN style="color: rgb(255, 153, 0);">// simulator virtual time</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">return</SPAN> <SPAN style="color: rgb(0, 0, 204);">(</SPAN>clock_<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 204);">}</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 255);">void</SPAN> sync<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><SPAN style="color: rgb(0, 0, 204);">}</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 255);">double</SPAN> start<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN>        <SPAN style="color: rgb(255, 153, 0);">// start time</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">return</SPAN> SCHED_START<SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 204);">}</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 255);">void</SPAN> <SPAN style="color: rgb(255, 0, 0);">reset</SPAN><SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 255);">protected</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">void</SPAN> dumpq<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// for debug: remove + print remaining events</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 153, 2);">void dispatch(Event*);</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// execute an event</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 153, 2);">void dispatch(Event*, double);</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// exec event, set clock_</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;Scheduler<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">virtual</SPAN> <SPAN style="color: rgb(0, 0, 204);">~</SPAN>Scheduler<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">int</SPAN> command<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 255);">int</SPAN> argc<SPAN style="color: rgb(0, 0, 204);">,</SPAN> <SPAN style="color: rgb(0, 0, 255);">const</SPAN> <SPAN style="color: rgb(0, 0, 255);">char</SPAN><SPAN style="color: rgb(0, 0, 204);">*</SPAN><SPAN style="color: rgb(0, 0, 255);">const</SPAN><SPAN style="color: rgb(0, 0, 204);">*</SPAN> argv<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 153, 2);">double clock_;</SPAN><BR style="color: rgb(0, 153, 2);"><SPAN style="color: rgb(0, 153, 2);">
+&nbsp;&nbsp;&nbsp;&nbsp;int halted_;</SPAN><BR style="color: rgb(0, 153, 2);"><SPAN style="color: rgb(0, 153, 2);">
+&nbsp;&nbsp;&nbsp;&nbsp;static Scheduler* instance_;</SPAN><BR style="color: rgb(0, 153, 2);"><SPAN style="color: rgb(0, 153, 2);">
+&nbsp;&nbsp;&nbsp;&nbsp;static scheduler_uid_t uid_;</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 204);">}</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR><SPAN style="font-weight: bold;">该类成员变量只有4个：<BR><BR></SPAN><SPAN style="font-weight: bold;">uid_用来给Event分配uid，在scheduler.cc文件的一开始，该变量被初始化为1：</SPAN><BR><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);">scheduler_uid_t Scheduler<SPAN style="color: rgb(0, 0, 204);">:</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN>uid_ <SPAN style="color: rgb(0, 0, 204);">=</SPAN> 1<SPAN style="color: rgb(0, 0, 204);">;</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR><SPAN style="font-weight: bold;">clock_和halted_在构造函数里被初始化为0：</SPAN><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);">Scheduler<SPAN style="color: rgb(0, 0, 204);">:</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN>Scheduler<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">:</SPAN> clock_<SPAN style="color: rgb(0, 0, 204);">(</SPAN>SCHED_START<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">,</SPAN> halted_<SPAN style="color: rgb(0, 0, 204);">(</SPAN>0<SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><SPAN style="color: rgb(0, 0, 204);">}</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR><SPAN style="font-weight: bold;">宏SCHED_START在scheduler.h中定义为0：</SPAN><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);"><SPAN style="color: rgb(0, 0, 204);">#</SPAN><SPAN style="color: rgb(255, 0, 0);">define</SPAN>    SCHED_START    0<SPAN style="color: rgb(0, 0, 204);">.</SPAN>0    <SPAN style="color: rgb(255, 153, 0);">/* start time (secs) */</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR><SPAN style="font-weight: bold;">提供为外界的接口schedule()函数的主要部分：</SPAN><BR><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);"><SPAN style="color: rgb(0, 0, 255);">void</SPAN> Scheduler<SPAN style="color: rgb(0, 0, 204);">:</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN>schedule<SPAN style="color: rgb(0, 0, 204);">(</SPAN>Handler<SPAN style="color: rgb(0, 0, 204);">*</SPAN> h<SPAN style="color: rgb(0, 0, 204);">,</SPAN> Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> e<SPAN style="color: rgb(0, 0, 204);">,</SPAN> <SPAN style="color: rgb(0, 0, 255);">double</SPAN> delay<SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 204);">.</SPAN><SPAN style="color: rgb(0, 0, 204);">.</SPAN><SPAN style="color: rgb(0, 0, 204);">.</SPAN><SPAN style="color: rgb(0, 0, 204);">.</SPAN><SPAN style="color: rgb(0, 0, 204);">.</SPAN><SPAN style="color: rgb(0, 0, 204);">.</SPAN> <SPAN style="color: rgb(255, 153, 0);">// a lot of checking</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;e<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>uid_ <SPAN style="color: rgb(0, 0, 204);">=</SPAN> uid_<SPAN style="color: rgb(0, 0, 204);">+</SPAN><SPAN style="color: rgb(0, 0, 204);">+</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN>            <SPAN style="color: rgb(255, 153, 0);">// 给该Event分配id</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;e<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>handler_ <SPAN style="color: rgb(0, 0, 204);">=</SPAN> h<SPAN style="color: rgb(0, 0, 204);">;</SPAN>             <SPAN style="color: rgb(255, 153, 0);">// 给其指定处理者h，到时调用处理者h的handle()函数</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;e<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>time_ <SPAN style="color: rgb(0, 0, 204);">=</SPAN> clock_ <SPAN style="color: rgb(0, 0, 204);">+</SPAN> delay<SPAN style="color: rgb(0, 0, 204);">;</SPAN>   <SPAN style="color: rgb(255, 153, 0);">// 指定该事件的触发时间，即时间戳<BR>
+</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;insert<SPAN style="color: rgb(0, 0, 204);">(</SPAN>e<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN>                   <SPAN style="color: rgb(255, 153, 0);">// 将该事件插入列表中，使用什么样的列表，由Scheduler类的派生类来决定。</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 204);">}</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR><SPAN style="font-weight: bold;">Scheduler调度机制的引擎:</SPAN><BR><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);"><SPAN style="color: rgb(0, 0, 255);">void</SPAN> Scheduler<SPAN style="color: rgb(0, 0, 204);">:</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN>run<SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;instance_ <SPAN style="color: rgb(0, 0, 204);">=</SPAN> <SPAN style="color: rgb(0, 0, 255);">this</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;Event <SPAN style="color: rgb(0, 0, 204);">*</SPAN>p<SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">while</SPAN> <SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">!</SPAN>halted_ <SPAN style="color: rgb(0, 0, 204);">&amp;</SPAN><SPAN style="color: rgb(0, 0, 204);">&amp;</SPAN> <SPAN style="color: rgb(0, 0, 204);">(</SPAN>p <SPAN style="color: rgb(0, 0, 204);">=</SPAN> <SPAN style="color: rgb(255, 0, 0);">deque</SPAN><SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dispatch<SPAN style="color: rgb(0, 0, 204);">(</SPAN>p<SPAN style="color: rgb(0, 0, 204);">,</SPAN> p<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>time_<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 204);">}</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 204);">}</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR><SPAN style="font-weight: bold;">不断从列表中取出Event事件，调用dispatch()执行事件:</SPAN><BR><TABLE style="border-collapse: collapse;" bgcolor="#f1f1f1" border="1" bordercolor="#999999" cellpadding="0" cellspacing="0" width="95&percnt;"><TBODY><TR><TD><P style="margin: 5px; line-height: 150&percnt;;"><CODE><SPAN style="color: rgb(0, 0, 0);"><SPAN style="color: rgb(0, 0, 255);">void</SPAN> Scheduler<SPAN style="color: rgb(0, 0, 204);">:</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN>dispatch<SPAN style="color: rgb(0, 0, 204);">(</SPAN>Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> p<SPAN style="color: rgb(0, 0, 204);">,</SPAN> <SPAN style="color: rgb(0, 0, 255);">double</SPAN> t<SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 255);">if</SPAN> <SPAN style="color: rgb(0, 0, 204);">(</SPAN>t <SPAN style="color: rgb(0, 0, 204);">&lt;</SPAN> clock_<SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(255, 0, 0);">fprintf</SPAN><SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(255, 0, 0);">stderr</SPAN><SPAN style="color: rgb(0, 0, 204);">,</SPAN> <SPAN style="color: rgb(255, 0, 255);">&quot;ns: scheduler going backwards in time from &percnt;f to &percnt;f.\n&quot;</SPAN><SPAN style="color: rgb(0, 0, 204);">,</SPAN> clock_<SPAN style="color: rgb(0, 0, 204);">,</SPAN> t<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(255, 0, 0);">abort</SPAN><SPAN style="color: rgb(0, 0, 204);">(</SPAN><SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<SPAN style="color: rgb(0, 0, 204);">}</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;clock_ <SPAN style="color: rgb(0, 0, 204);">=</SPAN> t<SPAN style="color: rgb(0, 0, 204);">;</SPAN>                <SPAN style="color: rgb(255, 153, 0);">// 将系统的虚拟时钟设置为该事件的时间戳</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;p<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>uid_ <SPAN style="color: rgb(0, 0, 204);">=</SPAN> <SPAN style="color: rgb(0, 0, 204);">-</SPAN>p<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>uid_<SPAN style="color: rgb(0, 0, 204);">;</SPAN>        <SPAN style="color: rgb(255, 153, 0);">// 将该Event的id变为相反数以标记它已被dispatch</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;p<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>handler_<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>handle<SPAN style="color: rgb(0, 0, 204);">(</SPAN>p<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN>    <SPAN style="color: rgb(255, 153, 0);">// 具体将Event交给Handler来处理</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 204);">}</SPAN><BR>
+<BR>
+<SPAN style="color: rgb(0, 0, 255);">void</SPAN> Scheduler<SPAN style="color: rgb(0, 0, 204);">:</SPAN><SPAN style="color: rgb(0, 0, 204);">:</SPAN>dispatch<SPAN style="color: rgb(0, 0, 204);">(</SPAN>Event<SPAN style="color: rgb(0, 0, 204);">*</SPAN> p<SPAN style="color: rgb(0, 0, 204);">)</SPAN> <SPAN style="color: rgb(0, 0, 204);">{</SPAN><BR>
+&nbsp;&nbsp;&nbsp;&nbsp;dispatch<SPAN style="color: rgb(0, 0, 204);">(</SPAN>p<SPAN style="color: rgb(0, 0, 204);">,</SPAN> p<SPAN style="color: rgb(0, 0, 204);">-</SPAN><SPAN style="color: rgb(0, 0, 204);">&gt;</SPAN>time_<SPAN style="color: rgb(0, 0, 204);">)</SPAN><SPAN style="color: rgb(0, 0, 204);">;</SPAN><BR>
+<SPAN style="color: rgb(0, 0, 204);">}</SPAN></SPAN></CODE></P></TD></TR></TBODY></TABLE><BR>
+		
+		
+		
+		
+</DIV>
+</TD></TR>
+</TBODY></TABLE>
+
+
+<P style="line-height: 150&percnt;; margin: 5px">
+ 
+ 
+</P>
+</TD></TR>
+ 
+ 
+<TR><TD height="25" align="center">
+<FONT color="#295200">发表于： 2007-04-07，修改于： 2007-04-08 00:10，已浏览893次，有评论0条</FONT> 
+<A href="http://blog.chinaunix.net/u2/star.php?blogid=33444&artid=272923" id="star" onclick="NewWindows(this.href);return false;" title="推荐这篇文章">推荐</A>
+<A href="http://blog.chinaunix.net/u2/complaint.php?blogid=33444&artid=272923" id="complaint" onclick="NewWindows(this.href);return false;" title="投诉这篇文章">投诉</A>
+</TD></TR>
+
+
+
+
+</TBODY></TABLE>
+
+
+</TD></TR>
+<TR><TD width="7" height="7"><IMG src="./NS中Scheduler类的工作机制简述_files/w_left_buttom.gif" border="0" alt=""></TD>
+<TD bgcolor="#F3F3F3">
+<TD width="7" height="7"><IMG src="./NS中Scheduler类的工作机制简述_files/w_right_buttom.gif" border="0" alt=""></TD>
+</TR>
+</TBODY></TABLE>
+
+
+</TD></TR><TR><TD width="11" height="11"><IMG src="./NS中Scheduler类的工作机制简述_files/g_left_bottom.gif" border="0" alt=""></TD>
+<TD bgcolor="#DDDDDD">
+<TD width="11" height="11"><IMG src="./NS中Scheduler类的工作机制简述_files/g_right_bottom.gif" border="0" alt=""></TD>
+</TR>
+</TBODY></TABLE>
+<BR>
+<BR>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="100&percnt;">
+<TBODY><TR><TD width="11" height="11"><IMG src="./NS中Scheduler类的工作机制简述_files/g_left_top.gif" border="0" alt=""></TD>
+<TD bgcolor="#DDDDDD" width="99&percnt;" height="11">
+<TD width="11" height="11"><IMG src="./NS中Scheduler类的工作机制简述_files/g_right_top.gif" border="0" alt=""></TD>
+</TR>
+
+<TR><TD colspan="3" width="100&percnt;" bgcolor="#DDDDDD" align="center" valign="top"> 
+<B>网友评论</B>
+<BR>
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="96&percnt;">
+<TBODY><TR><TD width="7" height="7"><IMG src="./NS中Scheduler类的工作机制简述_files/w_left_top.gif" border="0" alt=""></TD>
+<TD bgcolor="#F3F3F3" width="100&percnt;">
+<TD width="7" height="7"><IMG src="./NS中Scheduler类的工作机制简述_files/w_right_top.gif" border="0" alt=""></TD>
+</TR>
+<TR><TD colspan="3" bgcolor="#F3F3F3" align="center">
+<TABLE border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse" width="700" align="center">
+
+<TBODY><TR><TD style="color:#0000CC;" height="25">
+　发表评论
+</TD></TR>
+<TR><TD height="25">
+ 
+<IFRAME name="comment" src="./NS中Scheduler类的工作机制简述_files/comment.htm" width="640" height="160" frameborder="0"></IFRAME>
+ 
+</TD></TR>
+
+</TBODY></TABLE>
+
+</TD></TR>
+<TR><TD width="7" height="7"><IMG src="./NS中Scheduler类的工作机制简述_files/w_left_buttom.gif" border="0" alt=""></TD>
+<TD bgcolor="#F3F3F3">
+<TD width="7" height="7"><IMG src="./NS中Scheduler类的工作机制简述_files/w_right_buttom.gif" border="0" alt=""></TD>
+</TR>
+</TBODY></TABLE>
+
+
+</TD></TR><TR><TD width="11" height="11"><IMG src="./NS中Scheduler类的工作机制简述_files/g_left_bottom.gif" border="0" alt=""></TD>
+<TD bgcolor="#DDDDDD">
+<TD width="11" height="11"><IMG src="./NS中Scheduler类的工作机制简述_files/g_right_bottom.gif" border="0" alt=""></TD>
+</TR>
+</TBODY></TABLE>
+</TD></TR>
+</TBODY></TABLE>
+
+
+
+</BODY></HTML>

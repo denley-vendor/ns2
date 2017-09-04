@@ -1,0 +1,2361 @@
+
+<!-- saved from url=(0112)http://read.pudn.com/downloads91/sourcecode/internet/tcp_ip/351315/ns-tcp%E6%B3%A8%E9%87%8A/tcp20060207.cc__.htm -->
+<HTML><HEAD><META http-equiv="Content-Type" content="text/html; charset=gb18030"><TITLE>ns-tcpexplain.rar tcp20060207.cc</TITLE>
+<LINK href="./TcpAgent详解.htm_files/read_style.css" type="text/css" rel="stylesheet"></HEAD><BODY>
+<P><A href="http://www.pudn.com/">www.pudn.com</A> &gt; <A href="http://www.pudn.com/downloads91/sourcecode/internet/tcp_ip/detail351315.html">ns-tcpexplain.rar</A> &gt; tcp20060207.cc</P><!-- saved from http://www.pudn.com -->
+<SCRIPT src="./TcpAgent详解.htm_files/gg_read1.js"></SCRIPT><FORM action="http://www.pudn.com/search_db.asp" method="get" target="_blank">
+
+&nbsp;<INPUT maxlength="50" size="20" name="keyword">
+
+<INPUT type="submit" value="Search codes">
+
+<BR>
+<PRE name="code" class="cc">
+
+#ifndef lint
+static const char rcsid[] =
+    &quot;@(#) $Header: /nfs/jade/vint/CVSROOT/ns-2/tcp/tcp.cc,v 1.163 2005/06/21 01:48:24 sfloyd Exp $ (LBL)&quot;;
+#endif
+
+#include <STDLIB.H>
+#include <MATH.H>
+#include <SYS/TYPES.H>
+#include &quot;ip.h&quot;
+#include &quot;tcp.h&quot;
+#include &quot;flags.h&quot;
+#include &quot;random.h&quot;
+#include &quot;basetrace.h&quot;
+#include &quot;hdr_qs.h&quot;
+
+int hdr_tcp::offset_;
+
+static class TCPHeaderClass : public PacketHeaderClass {
+public:
+        TCPHeaderClass() : PacketHeaderClass(&quot;PacketHeader/TCP&quot;,
+					     sizeof(hdr_tcp)) {
+		bind_offset(&amp;hdr_tcp::offset_);
+	}
+} class_tcphdr;
+
+static class TcpClass : public TclClass {
+public:
+	TcpClass() : TclClass(&quot;Agent/TCP&quot;) {}
+	TclObject* create(int , const char*const*) {
+		return (new TcpAgent());
+	}
+} class_tcp;
+
+TcpAgent::TcpAgent() 
+	: Agent(PT_TCP), 
+	  t_seqno_(0), t_rtt_(0), t_srtt_(0), t_rttvar_(0), 
+	  t_backoff_(0), ts_peer_(0), ts_echo_(0),
+	  tss(NULL), tss_size_(100), 
+	  rtx_timer_(this), delsnd_timer_(this), burstsnd_timer_(this), 
+	  dupacks_(0), curseq_(0), highest_ack_(0), cwnd_(0), ssthresh_(0), 
+	  maxseq_(0), count_(0), rtt_active_(0), rtt_seq_(-1), rtt_ts_(0.0), 
+	  lastreset_(0.0), closed_(0), first_decrease_(1), fcnt_(0), 
+	  nrexmit_(0), restart_bugfix_(1), cong_action_(0), 
+	  ecn_burst_(0), ecn_backoff_(0), ect_(0), 
+	  qs_requested_(0), qs_approved_(0),
+	  qs_window_(0), qs_cwnd_(0), frto_(0)
+	
+{
+#ifdef TCP_DELAY_BIND_ALL
+#else /* ! TCP_DELAY_BIND_ALL */
+	// not delay-bound because delay-bound tracevars aren&#39;t yet supported
+	bind(&quot;t_seqno_&quot;, &amp;t_seqno_);
+	bind(&quot;rtt_&quot;, &amp;t_rtt_);
+	bind(&quot;srtt_&quot;, &amp;t_srtt_);
+	bind(&quot;rttvar_&quot;, &amp;t_rttvar_);
+	bind(&quot;backoff_&quot;, &amp;t_backoff_);
+	bind(&quot;dupacks_&quot;, &amp;dupacks_);
+	bind(&quot;seqno_&quot;, &amp;curseq_);
+	bind(&quot;ack_&quot;, &amp;highest_ack_);
+	bind(&quot;cwnd_&quot;, &amp;cwnd_);
+	bind(&quot;ssthresh_&quot;, &amp;ssthresh_);
+	bind(&quot;maxseq_&quot;, &amp;maxseq_);
+        bind(&quot;ndatapack_&quot;, &amp;ndatapack_);
+        bind(&quot;ndatabytes_&quot;, &amp;ndatabytes_);
+        bind(&quot;nackpack_&quot;, &amp;nackpack_);
+        bind(&quot;nrexmit_&quot;, &amp;nrexmit_);
+        bind(&quot;nrexmitpack_&quot;, &amp;nrexmitpack_);
+        bind(&quot;nrexmitbytes_&quot;, &amp;nrexmitbytes_);
+        bind(&quot;necnresponses_&quot;, &amp;necnresponses_);
+        bind(&quot;ncwndcuts_&quot;, &amp;ncwndcuts_);
+	bind(&quot;ncwndcuts1_&quot;, &amp;ncwndcuts1_);
+#endif /* TCP_DELAY_BIND_ALL */
+
+}
+
+void
+TcpAgent::delay_bind_init_all()
+{
+
+        // Defaults for bound variables should be set in ns-default.tcl.
+        delay_bind_init_one(&quot;window_&quot;);
+        delay_bind_init_one(&quot;windowInit_&quot;);
+        delay_bind_init_one(&quot;windowInitOption_&quot;);
+
+        delay_bind_init_one(&quot;syn_&quot;);
+        delay_bind_init_one(&quot;windowOption_&quot;);
+        delay_bind_init_one(&quot;windowConstant_&quot;);
+        delay_bind_init_one(&quot;windowThresh_&quot;);
+        delay_bind_init_one(&quot;delay_growth_&quot;);
+        delay_bind_init_one(&quot;overhead_&quot;);
+        delay_bind_init_one(&quot;tcpTick_&quot;);
+        delay_bind_init_one(&quot;ecn_&quot;);
+        delay_bind_init_one(&quot;SetCWRonRetransmit_&quot;);
+        delay_bind_init_one(&quot;old_ecn_&quot;);
+        delay_bind_init_one(&quot;eln_&quot;);
+        delay_bind_init_one(&quot;eln_rxmit_thresh_&quot;);
+        delay_bind_init_one(&quot;packetSize_&quot;);
+        delay_bind_init_one(&quot;tcpip_base_hdr_size_&quot;);
+	delay_bind_init_one(&quot;ts_option_size_&quot;);
+        delay_bind_init_one(&quot;bugFix_&quot;);
+	delay_bind_init_one(&quot;bugFix_ack_&quot;);
+	delay_bind_init_one(&quot;bugFix_ts_&quot;);
+	delay_bind_init_one(&quot;lessCareful_&quot;);
+        delay_bind_init_one(&quot;slow_start_restart_&quot;);
+        delay_bind_init_one(&quot;restart_bugfix_&quot;);
+        delay_bind_init_one(&quot;timestamps_&quot;);
+	delay_bind_init_one(&quot;ts_resetRTO_&quot;);
+        delay_bind_init_one(&quot;maxburst_&quot;);
+	delay_bind_init_one(&quot;aggressive_maxburst_&quot;);
+        delay_bind_init_one(&quot;maxcwnd_&quot;);
+	delay_bind_init_one(&quot;numdupacks_&quot;);
+	delay_bind_init_one(&quot;numdupacksFrac_&quot;);
+	delay_bind_init_one(&quot;exitFastRetrans_&quot;);
+        delay_bind_init_one(&quot;maxrto_&quot;);
+	delay_bind_init_one(&quot;minrto_&quot;);
+        delay_bind_init_one(&quot;srtt_init_&quot;);
+        delay_bind_init_one(&quot;rttvar_init_&quot;);
+        delay_bind_init_one(&quot;rtxcur_init_&quot;);
+        delay_bind_init_one(&quot;T_SRTT_BITS&quot;);
+        delay_bind_init_one(&quot;T_RTTVAR_BITS&quot;);
+        delay_bind_init_one(&quot;rttvar_exp_&quot;);
+        delay_bind_init_one(&quot;awnd_&quot;);
+        delay_bind_init_one(&quot;decrease_num_&quot;);
+        delay_bind_init_one(&quot;increase_num_&quot;);
+	delay_bind_init_one(&quot;k_parameter_&quot;);
+	delay_bind_init_one(&quot;l_parameter_&quot;);
+        delay_bind_init_one(&quot;trace_all_oneline_&quot;);
+        delay_bind_init_one(&quot;nam_tracevar_&quot;);
+
+        delay_bind_init_one(&quot;QOption_&quot;);
+        delay_bind_init_one(&quot;EnblRTTCtr_&quot;);
+        delay_bind_init_one(&quot;control_increase_&quot;);
+	delay_bind_init_one(&quot;noFastRetrans_&quot;);
+	delay_bind_init_one(&quot;precisionReduce_&quot;);
+	delay_bind_init_one(&quot;oldCode_&quot;);
+	delay_bind_init_one(&quot;useHeaders_&quot;);
+	delay_bind_init_one(&quot;low_window_&quot;);
+	delay_bind_init_one(&quot;high_window_&quot;);
+	delay_bind_init_one(&quot;high_p_&quot;);
+	delay_bind_init_one(&quot;high_decrease_&quot;);
+	delay_bind_init_one(&quot;max_ssthresh_&quot;);
+	delay_bind_init_one(&quot;cwnd_range_&quot;);
+	delay_bind_init_one(&quot;timerfix_&quot;);
+	delay_bind_init_one(&quot;rfc2988_&quot;);
+	delay_bind_init_one(&quot;singledup_&quot;);
+	delay_bind_init_one(&quot;LimTransmitFix_&quot;);
+	delay_bind_init_one(&quot;rate_request_&quot;);
+	delay_bind_init_one(&quot;qs_enabled_&quot;);
+	delay_bind_init_one(&quot;tcp_qs_recovery_&quot;);
+	delay_bind_init_one(&quot;qs_request_mode_&quot;);
+	delay_bind_init_one(&quot;qs_thresh_&quot;);
+	delay_bind_init_one(&quot;qs_rtt_&quot;);
+
+	delay_bind_init_one(&quot;frto_enabled_&quot;);
+	delay_bind_init_one(&quot;sfrto_enabled_&quot;);
+	delay_bind_init_one(&quot;spurious_response_&quot;);
+
+#ifdef TCP_DELAY_BIND_ALL
+	// out because delay-bound tracevars aren&#39;t yet supported
+        delay_bind_init_one(&quot;t_seqno_&quot;);
+        delay_bind_init_one(&quot;rtt_&quot;);
+        delay_bind_init_one(&quot;srtt_&quot;);
+        delay_bind_init_one(&quot;rttvar_&quot;);
+        delay_bind_init_one(&quot;backoff_&quot;);
+        delay_bind_init_one(&quot;dupacks_&quot;);
+        delay_bind_init_one(&quot;seqno_&quot;);
+        delay_bind_init_one(&quot;ack_&quot;);
+        delay_bind_init_one(&quot;cwnd_&quot;);
+        delay_bind_init_one(&quot;ssthresh_&quot;);
+        delay_bind_init_one(&quot;maxseq_&quot;);
+        delay_bind_init_one(&quot;ndatapack_&quot;);
+        delay_bind_init_one(&quot;ndatabytes_&quot;);
+        delay_bind_init_one(&quot;nackpack_&quot;);
+        delay_bind_init_one(&quot;nrexmit_&quot;);
+        delay_bind_init_one(&quot;nrexmitpack_&quot;);
+        delay_bind_init_one(&quot;nrexmitbytes_&quot;);
+        delay_bind_init_one(&quot;necnresponses_&quot;);
+        delay_bind_init_one(&quot;ncwndcuts_&quot;);
+	delay_bind_init_one(&quot;ncwndcuts1_&quot;);
+#endif /* TCP_DELAY_BIND_ALL */
+
+	Agent::delay_bind_init_all();
+
+        reset();
+}
+
+int
+TcpAgent::delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer)
+{
+        if (delay_bind(varName, localName, &quot;window_&quot;, &amp;wnd_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;windowInit_&quot;, &amp;wnd_init_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;windowInitOption_&quot;, &amp;wnd_init_option_, tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;syn_&quot;, &amp;syn_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;windowOption_&quot;, &amp;wnd_option_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;windowConstant_&quot;,  &amp;wnd_const_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;windowThresh_&quot;, &amp;wnd_th_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;delay_growth_&quot;, &amp;delay_growth_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;overhead_&quot;, &amp;overhead_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;tcpTick_&quot;, &amp;tcp_tick_, tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;ecn_&quot;, &amp;ecn_, tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;SetCWRonRetransmit_&quot;, &amp;SetCWRonRetransmit_, tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;old_ecn_&quot;, &amp;old_ecn_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;eln_&quot;, &amp;eln_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;eln_rxmit_thresh_&quot;, &amp;eln_rxmit_thresh_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;packetSize_&quot;, &amp;size_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;tcpip_base_hdr_size_&quot;, &amp;tcpip_base_hdr_size_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;ts_option_size_&quot;, &amp;ts_option_size_, tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;bugFix_&quot;, &amp;bug_fix_ , tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;bugFix_ack_&quot;, &amp;bugfix_ack_, tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;bugFix_ts_&quot;, &amp;bugfix_ts_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;lessCareful_&quot;, &amp;less_careful_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;timestamps_&quot;, &amp;ts_option_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;ts_resetRTO_&quot;, &amp;ts_resetRTO_, tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;slow_start_restart_&quot;, &amp;slow_start_restart_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;restart_bugfix_&quot;, &amp;restart_bugfix_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;maxburst_&quot;, &amp;maxburst_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;aggressive_maxburst_&quot;, &amp;aggressive_maxburst_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;maxcwnd_&quot;, &amp;maxcwnd_ , tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;numdupacks_&quot;, &amp;numdupacks_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;numdupacksFrac_&quot;, &amp;numdupacksFrac_, tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;exitFastRetrans_&quot;, &amp;exitFastRetrans_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;maxrto_&quot;, &amp;maxrto_ , tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;minrto_&quot;, &amp;minrto_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;srtt_init_&quot;, &amp;srtt_init_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;rttvar_init_&quot;, &amp;rttvar_init_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;rtxcur_init_&quot;, &amp;rtxcur_init_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;T_SRTT_BITS&quot;, &amp;T_SRTT_BITS , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;T_RTTVAR_BITS&quot;, &amp;T_RTTVAR_BITS , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;rttvar_exp_&quot;, &amp;rttvar_exp_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;awnd_&quot;, &amp;awnd_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;decrease_num_&quot;, &amp;decrease_num_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;increase_num_&quot;, &amp;increase_num_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;k_parameter_&quot;, &amp;k_parameter_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;l_parameter_&quot;, &amp;l_parameter_, tracer)) return TCL_OK;
+
+
+        if (delay_bind_bool(varName, localName, &quot;trace_all_oneline_&quot;, &amp;trace_all_oneline_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;nam_tracevar_&quot;, &amp;nam_tracevar_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;QOption_&quot;, &amp;QOption_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;EnblRTTCtr_&quot;, &amp;EnblRTTCtr_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;control_increase_&quot;, &amp;control_increase_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;noFastRetrans_&quot;, &amp;noFastRetrans_, tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;precisionReduce_&quot;, &amp;precision_reduce_, tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;oldCode_&quot;, &amp;oldCode_, tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;useHeaders_&quot;, &amp;useHeaders_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;low_window_&quot;, &amp;low_window_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;high_window_&quot;, &amp;high_window_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;high_p_&quot;, &amp;high_p_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;high_decrease_&quot;, &amp;high_decrease_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;max_ssthresh_&quot;, &amp;max_ssthresh_, tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, &quot;cwnd_range_&quot;, &amp;cwnd_range_, tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;timerfix_&quot;, &amp;timerfix_, tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;rfc2988_&quot;, &amp;rfc2988_, tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;singledup_&quot;, &amp;singledup_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;LimTransmitFix_&quot;, &amp;LimTransmitFix_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;rate_request_&quot;, &amp;rate_request_ , tracer)) return TCL_OK;
+        if (delay_bind_bool(varName, localName, &quot;qs_enabled_&quot;, &amp;qs_enabled_ , tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;tcp_qs_recovery_&quot;, &amp;tcp_qs_recovery_, tracer)) return TCL_OK;
+
+	if (delay_bind_bool(varName, localName, &quot;frto_enabled_&quot;, &amp;frto_enabled_, tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;sfrto_enabled_&quot;, &amp;sfrto_enabled_, tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, &quot;spurious_response_&quot;, &amp;spurious_response_, tracer)) return TCL_OK;
+
+
+#ifdef TCP_DELAY_BIND_ALL
+	// not if (delay-bound delay-bound tracevars aren&#39;t yet supported
+        if (delay_bind(varName, localName, &quot;t_seqno_&quot;, &amp;t_seqno_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;rtt_&quot;, &amp;t_rtt_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;srtt_&quot;, &amp;t_srtt_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;rttvar_&quot;, &amp;t_rttvar_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;backoff_&quot;, &amp;t_backoff_ , tracer)) return TCL_OK;
+
+        if (delay_bind(varName, localName, &quot;dupacks_&quot;, &amp;dupacks_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;seqno_&quot;, &amp;curseq_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;ack_&quot;, &amp;highest_ack_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;cwnd_&quot;, &amp;cwnd_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;ssthresh_&quot;, &amp;ssthresh_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;maxseq_&quot;, &amp;maxseq_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;ndatapack_&quot;, &amp;ndatapack_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;ndatabytes_&quot;, &amp;ndatabytes_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;nackpack_&quot;, &amp;nackpack_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;nrexmit_&quot;, &amp;nrexmit_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;nrexmitpack_&quot;, &amp;nrexmitpack_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;nrexmitbytes_&quot;, &amp;nrexmitbytes_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;necnresponses_&quot;, &amp;necnresponses_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, &quot;ncwndcuts_&quot;, &amp;ncwndcuts_ , tracer)) return TCL_OK;
+ 	if (delay_bind(varName, localName, &quot;ncwndcuts1_&quot;, &amp;ncwndcuts1_ , tracer)) return TCL_OK;
+
+#endif
+
+        return Agent::delay_bind_dispatch(varName, localName, tracer);
+}
+
+#define TCP_WRK_SIZE		512
+/* Print out all the traced variables whenever any one is changed */
+void
+TcpAgent::traceAll() {
+	if (!channel_)
+		return;
+
+	double curtime;
+	Scheduler&amp; s = Scheduler::instance();
+	char wrk[TCP_WRK_SIZE];
+
+	curtime = &amp;s ? s.clock() : 0;
+	snprintf(wrk, TCP_WRK_SIZE,
+		 &quot;time: &percnt;-8.5f saddr: &percnt;-2d sport: &percnt;-2d daddr: &percnt;-2d dport:&quot;
+		 &quot; &percnt;-2d maxseq: &percnt;-4d hiack: &percnt;-4d seqno: &percnt;-4d cwnd: &percnt;-6.3f&quot;
+		 &quot; ssthresh: &percnt;-3d dupacks: &percnt;-2d rtt: &percnt;-6.3f srtt: &percnt;-6.3f&quot;
+		 &quot; rttvar: &percnt;-6.3f bkoff: &percnt;-d\n&quot;, curtime, addr(), port(),
+		 daddr(), dport(), int(maxseq_), int(highest_ack_),
+		 int(t_seqno_), double(cwnd_), int(ssthresh_),
+		 int(dupacks_), int(t_rtt_)*tcp_tick_, 
+		 (int(t_srtt_) &gt;&gt; T_SRTT_BITS)*tcp_tick_, 
+		 int(t_rttvar_)*tcp_tick_/4.0, int(t_backoff_)); 
+	(void)Tcl_Write(channel_, wrk, -1);
+}
+
+/* Print out just the variable that is modified */
+void
+TcpAgent::traceVar(TracedVar* v) 
+{
+	if (!channel_)
+		return;
+
+	double curtime;
+	Scheduler&amp; s = Scheduler::instance();
+	char wrk[TCP_WRK_SIZE];
+
+	curtime = &amp;s ? s.clock() : 0;
+
+	// XXX comparing addresses is faster than comparing names
+	if (v == &amp;cwnd_)
+		snprintf(wrk, TCP_WRK_SIZE,
+			 &quot;&percnt;-8.5f &percnt;-2d &percnt;-2d &percnt;-2d &percnt;-2d &percnt;s &percnt;-6.3f\n&quot;,
+			 curtime, addr(), port(), daddr(), dport(),
+			 v-&gt;name(), double(*((TracedDouble*) v))); 
+ 	else if (v == &amp;t_rtt_)
+		snprintf(wrk, TCP_WRK_SIZE,
+			 &quot;&percnt;-8.5f &percnt;-2d &percnt;-2d &percnt;-2d &percnt;-2d &percnt;s &percnt;-6.3f\n&quot;,
+			 curtime, addr(), port(), daddr(), dport(),
+			 v-&gt;name(), int(*((TracedInt*) v))*tcp_tick_); 
+	else if (v == &amp;t_srtt_)
+		snprintf(wrk, TCP_WRK_SIZE,
+			 &quot;&percnt;-8.5f &percnt;-2d &percnt;-2d &percnt;-2d &percnt;-2d &percnt;s &percnt;-6.3f\n&quot;,
+			 curtime, addr(), port(), daddr(), dport(),
+			 v-&gt;name(), 
+			 (int(*((TracedInt*) v)) &gt;&gt; T_SRTT_BITS)*tcp_tick_); 
+	else if (v == &amp;t_rttvar_)
+		snprintf(wrk, TCP_WRK_SIZE,
+			 &quot;&percnt;-8.5f &percnt;-2d &percnt;-2d &percnt;-2d &percnt;-2d &percnt;s &percnt;-6.3f\n&quot;,
+			 curtime, addr(), port(), daddr(), dport(),
+			 v-&gt;name(), 
+			 int(*((TracedInt*) v))*tcp_tick_/4.0); 
+	else
+		snprintf(wrk, TCP_WRK_SIZE,
+			 &quot;&percnt;-8.5f &percnt;-2d &percnt;-2d &percnt;-2d &percnt;-2d &percnt;s &percnt;d\n&quot;,
+			 curtime, addr(), port(), daddr(), dport(),
+			 v-&gt;name(), int(*((TracedInt*) v))); 
+
+	(void)Tcl_Write(channel_, wrk, -1);
+}
+
+void
+TcpAgent::trace(TracedVar* v) 
+{
+	if (nam_tracevar_) {
+		Agent::trace(v);
+	} else if (trace_all_oneline_)
+		traceAll();
+	else 
+		traceVar(v);
+}
+
+//
+// in 1-way TCP, syn_ indicates we are modeling
+// a SYN exchange at the beginning.  If this is true
+// and we are delaying growth, then use an initial
+// window of one.  If not, we do whatever initial_window()
+// says to do.
+//
+
+void
+TcpAgent::set_initial_window()              //初始化CWND
+{
+	if (syn_ &amp;&amp; delay_growth_)         
+		cwnd_ = 1.0;                 //连接开始，初始窗口为1
+	else
+		cwnd_ = initial_window();   //
+}
+
+void
+TcpAgent::reset_qoption()
+{
+	int now = (int)(Scheduler::instance().clock()/tcp_tick_ + 0.5);
+
+	T_start = now ; 
+	RTT_count = 0 ; 
+	RTT_prev = 0 ; 
+	RTT_goodcount = 1 ; 
+	F_counting = 0 ; 
+	W_timed = -1 ; 
+	F_full = 0 ;
+	Backoffs = 0 ; 
+}
+
+
+//reset()仅被delay_bind_init_all()调用，用于初始化参数
+void
+TcpAgent::reset()
+{
+	rtt_init();
+	rtt_seq_ = -1;
+	/*XXX lookup variables */
+	dupacks_ = 0;
+	curseq_ = 0;
+	set_initial_window();
+
+	t_seqno_ = 0;
+	maxseq_ = -1;
+	last_ack_ = -1;
+	highest_ack_ = -1;
+	ssthresh_ = int(wnd_);       	//wnd_默认为20，SSTHRESH初始也为20
+	if (max_ssthresh_ &gt; 0 &amp;&amp; max_ssthresh_ &lt; ssthresh_) 
+		ssthresh_ = max_ssthresh_;         //max_ssthresh_默认为0，表示无限
+	wnd_restart_ = 1.;
+	awnd_ = wnd_init_ / 2.0;
+	recover_ = 0;
+	closed_ = 0;
+	last_cwnd_action_ = 0;
+	boot_time_ = Random::uniform(tcp_tick_);    //计算RTT时用到，用来模拟系统启动时间（在两个TCP时钟之间）
+	first_decrease_ = 1;                       //用于在slowdown()中判断是否第一次减少CWND，＝1，是
+	/* W.N.: for removing packets from previous incarnations */
+	lastreset_ = Scheduler::instance().clock();
+
+	/* Now these variables will be reset 
+	   - Debojyoti Dutta 12th Oct&#39;2000 */
+ 
+	ndatapack_ = 0;
+	ndatabytes_ = 0;
+	nackpack_ = 0;
+	nrexmitbytes_ = 0;
+	nrexmit_ = 0;
+	nrexmitpack_ = 0;
+	necnresponses_ = 0;
+	ncwndcuts_ = 0;
+	ncwndcuts1_ = 0;
+
+	if (control_increase_) {
+		prev_highest_ack_ = highest_ack_ ; 
+	}
+
+	if (wnd_option_ == 8) {
+		// HighSpeed TCP
+		hstcp_.low_p = 1.5/(low_window_*low_window_);
+		double highLowWin = log(high_window_)-log(low_window_);
+		double highLowP = log(high_p_) - log(hstcp_.low_p);
+		hstcp_.dec1 = 
+		   0.5 - log(low_window_) * (high_decrease_ - 0.5)/highLowWin;
+		hstcp_.dec2 = (high_decrease_ - 0.5)/highLowWin;
+        	hstcp_.p1 = 
+		  log(hstcp_.low_p) - log(low_window_) * highLowP/highLowWin;
+		hstcp_.p2 = highLowP/highLowWin;
+	}
+
+	if (QOption_) {
+		int now = (int)(Scheduler::instance().clock()/tcp_tick_ + 0.5);
+		T_last = now ; 
+		T_prev = now ; 
+		W_used = 0 ;
+		if (EnblRTTCtr_) {
+			reset_qoption();
+		}
+	}
+}
+
+
+
+/*仅在reset()作初始化时调用，reset()又被delay_bind_init_all()调用
+ * Initialize variables for the retransmit timer.
+ */
+void TcpAgent::rtt_init()       //初始化RTT、SRTT、RTTVAR、RTXCUR和回退(补偿)因子
+{
+	t_rtt_ = 0;        
+	t_srtt_ = int(srtt_init_ / tcp_tick_) &lt;&lt; T_SRTT_BITS;
+	t_rttvar_ = int(rttvar_init_ / tcp_tick_) &lt;&lt; T_RTTVAR_BITS;
+	t_rtxcur_ = rtxcur_init_;             //初始化重传定时时间
+	t_backoff_ = 1;
+}
+
+
+
+//由set_rtx_timer()调用rtt_timeout()设定超时值
+double TcpAgent::rtt_timeout()          //根据给定的t_rtxcur_（考虑上下限和回退因子）
+{
+	double timeout;
+	if (rfc2988_) {           //按rfc2988的算法，不同处在于2988的minrto要乘回退因子，默认为FALSE
+	// Correction from Tom Kelly to be RFC2988-compliant, by
+	// clamping minrto_ before applying t_backoff_.
+		if (t_rtxcur_ &lt; minrto_)                   //重传超时值不能小于最小RTO
+			timeout = minrto_ * t_backoff_;    //否则按最小值算 
+		else
+			timeout = t_rtxcur_ * t_backoff_;  //按给定值RTXCUR算，都要乘回退因子
+	} else {
+		timeout = t_rtxcur_ * t_backoff_;    
+		if (timeout &lt; minrto_)
+			timeout = minrto_;
+	}
+
+	if (timeout &gt; maxrto_)                   //限制最大超时值
+		timeout = maxrto_;
+
+        if (timeout &lt; 2.0 * tcp_tick_) {     //超时值为负则退出，小于2个tcp时钟则为2个tcp时钟
+		if (timeout &lt; 0) {
+			fprintf(stderr, &quot;TcpAgent: negative RTO!  (&percnt;f)\n&quot;,
+				timeout);
+			exit(1);
+		}
+		timeout = 2.0 * tcp_tick_;
+	}
+	return (timeout);
+}
+
+
+
+//由newack()调用，再由recv_newack_helper()调用，最终由recv()调用
+//算得的t_rtxcur_由rtt_timeout()调用，再由set_rtx_timer()调用rtt_timeout设定超时值，set_rtx_timer()主要由output()等调用
+/* This has been modified to use the tahoe code. */
+void TcpAgent::rtt_update(double tao)      //更新RTT，将双精度的RTT转化成整数的RTT，由此计算t_rtxcur_
+{                                                          //tao为newack（）中的now-ts_echo或now-rtt_ts_，相当于未整数化的RTT
+	double now = Scheduler::instance().clock();
+	if (ts_option_)                                  //采用回应时间戳的情况，默认不采用
+		t_rtt_ = int(tao /tcp_tick_ + 0.5);     //RTT整数化，＋0.5表示不四舍五入，只要有小数，都入。其中tcp_tick_默认为0.01，即RTT的值精确到0.01秒
+	else {                                              //不采用时间戳的情况
+		double sendtime = now - tao;         //计算本端发送该序号的时间
+		sendtime += boot_time_;               //发送时间要加上boot时间，boot时间用于系统模拟启动时间？？是个随机数，小于一个tcp嘀哒
+		double tickoff = fmod(sendtime, tcp_tick_);        //取发送时间对tcp_tick_取模的余数，是整数
+		t_rtt_ = int((tao + tickoff) / tcp_tick_);     //计算不采用时间戳的RTT时间 
+	}
+	if (t_rtt_ &lt; 1)          //rtt不能小于一个TCP时钟周期
+		t_rtt_ = 1;
+	//
+	// t_srtt_ has 3 bits to the right of the binary point
+	// t_rttvar_ has 2
+        // Thus &quot;t_srtt_ &gt;&gt; T_SRTT_BITS&quot; is the actual srtt, 
+  	//   and &quot;t_srtt_&quot; is 8*srtt.
+	// Similarly, &quot;t_rttvar_ &gt;&gt; T_RTTVAR_BITS&quot; is the actual rttvar,
+	//   and &quot;t_rttvar_&quot; is 4*rttvar.
+	//以下计算srtt和varrtt,算法不必关心
+        if (t_srtt_ != 0) {
+		register short delta;
+		delta = t_rtt_ - (t_srtt_ &gt;&gt; T_SRTT_BITS);	// d = (m - a0)
+		if ((t_srtt_ += delta) &lt;= 0)	// srtt的计算：a1 = 7/8 a0 + 1/8 m
+			t_srtt_ = 1;
+		if (delta &lt; 0)
+			delta = -delta;
+		delta -= (t_rttvar_ &gt;&gt; T_RTTVAR_BITS);
+		if ((t_rttvar_ += delta) &lt;= 0)	// varrtt的计算：var1 = 3/4 var0 + 1/4 |d|
+			t_rttvar_ = 1;
+	} else {
+		t_srtt_ = t_rtt_ &lt;&lt; T_SRTT_BITS;		// srtt = rtt
+		t_rttvar_ = t_rtt_ &lt;&lt; (T_RTTVAR_BITS-1);	// rttvar = rtt / 2
+	}
+	//
+	// Current retransmit value is 
+	//    (unscaled) smoothed round trip estimate
+	//    plus 2^rttvar_exp_ times (unscaled) rttvar. 
+	//
+	//计算重传超时时间RTO= SRTT + max (G, K*RTTVAR)，算法不必关心
+	t_rtxcur_ = (((t_rttvar_ &lt;&lt; (rttvar_exp_ + (T_SRTT_BITS - T_RTTVAR_BITS))) +
+		t_srtt_)  &gt;&gt; T_SRTT_BITS ) * tcp_tick_;
+
+	return;
+}
+
+
+//在reset_rtx_timer()中使用,t_backoff用于在重传超时时对RTO进行翻倍
+void TcpAgent::rtt_backoff()
+{
+	if (t_backoff_ &lt; 64)          /*t_backoff_即RTO补偿因子，初始化为0，启动后为1，
+	                                最大为64，即最大重传超时时间为：最初的RTO*64 */
+		t_backoff_ &lt;&lt;= 1;     //每次补偿因子*2
+
+	if (t_backoff_ &gt; 8) {         //补偿因子&gt;8，说明重发了3次以上，则对rtt平均偏差和平滑值做出修正
+		/*
+		 * If backed off this far, clobber the srtt
+		 * value, storing it in the mean deviation
+		 * instead.
+		 */
+		t_rttvar_ += (t_srtt_ &gt;&gt; T_SRTT_BITS);
+		t_srtt_ = 0;
+	}
+}
+
+/*
+ * headersize:
+ *      how big is an IP+TCP header in bytes; include options such as ts
+ * this function should be virtual so others (e.g. SACK) can override
+ */
+int TcpAgent::headersize()  //IP+TCP头大小＝基本头大小＋时间选项大小      
+{
+        int total = tcpip_base_hdr_size_;
+	if (total &lt; 1) {
+		fprintf(stderr,
+		  &quot;TcpAgent(&percnt;s): warning: tcpip hdr size is only &percnt;d bytes\n&quot;,
+		  name(), tcpip_base_hdr_size_);
+	}
+	if (ts_option_)
+		total += ts_option_size_;
+        return (total);
+}
+
+//output（）发送单个分组，被send_much、send_one等调用，不直接使用
+void TcpAgent::output(int seqno, int reason)     //reason表示重发原因，本端不用，传给对端用    
+{
+	int force_set_rtx_timer = 0;                        //后面有highest_ack_ == maxseq_时，该值为0
+	Packet* p = allocpkt();
+	hdr_tcp *tcph = hdr_tcp::access(p);
+	hdr_flags* hf = hdr_flags::access(p);
+	hdr_ip *iph = hdr_ip::access(p);
+	int databytes = hdr_cmn::access(p)-&gt;size();    //记录本分组的字节数
+	tcph-&gt;seqno() = seqno;                                 //当前将发送的分组号
+	tcph-&gt;ts() = Scheduler::instance().clock();      //记录发送当前分组的时间戳
+	int is_retransmit = (seqno &lt; maxseq_);           //当前分组号&lt;以发最大分组号，表示本次是重传该分组
+ 
+	// Mark packet for diagnosis purposes if we are in Quick-Start Phase
+	if (qs_approved_) {                                   //不看
+		hf-&gt;qs() = 1;
+	}
+ 
+        // store timestamps, with bugfix_ts_.  From Andrei Gurtov. 
+	// (A real TCP would use scoreboard for this.)
+        if (bugfix_ts_ &amp;&amp; tss==NULL) {              //不看
+                tss = (double*) calloc(tss_size_, sizeof(double));
+                if (tss==NULL) exit(1);
+        }
+        //dynamically grow the timestamp array if it&#39;s getting full
+        if (bugfix_ts_ &amp;&amp; window() &gt; tss_size_* 0.9) {         //不看
+                double *ntss;
+                ntss = (double*) calloc(tss_size_*2, sizeof(double));
+                printf(&quot;resizing timestamp table\n&quot;);
+                if (ntss == NULL) exit(1);
+                for (int i=0; i<TSS_SIZE_; i++)="" ntss[(highest_ack_="" +="" i)="" %="" (tss_size_="" *="" 2)]="tss[(highest_ack_" tss_size_];="" free(tss);="" tss_size_="" tss="ntss;" }="" if="" (tss!="NULL)" 不看="" tss[seqno="" tss_size_]="tcph-">ts(); 
+
+	tcph-&gt;ts_echo() = ts_peer_;           //将对方发送的时间戳返回给对方
+	tcph-&gt;reason() = reason;              //重发的原因传给对方
+	tcph-&gt;last_rtt() = int(int(t_rtt_)*tcp_tick_*1000);      //将上次的RTT结果传给对方，以毫秒计，只用于统计
+
+	if (ecn_) {                //不看
+		hf-&gt;ect() = 1;	// ECN-capable transport
+	}
+	if (cong_action_ &amp;&amp; (!is_retransmit || SetCWRonRetransmit_)) {   //不看
+		hf-&gt;cong_action() = TRUE;  
+		cong_action_ = FALSE;
+        }
+	/* Check if this is the initial SYN packet. */
+	if (seqno == 0) {              //是否支持第一个分组
+		if (syn_) {                    //是第一个分组，且支持SYN
+			databytes = 0;         //是SYN分组，则不参加ndatabytes的统计
+			curseq_ += 1;         //应用的最大分组数＋1
+			hdr_cmn::access(p)-&gt;size() = tcpip_base_hdr_size_;
+		}
+		if (ecn_) {                   //不看
+			hf-&gt;ecnecho() = 1;
+//			hf-&gt;cong_action() = 1;
+			hf-&gt;ect() = 0;
+		}
+		if (qs_enabled_) {       //不看
+			hdr_qs *qsh = hdr_qs::access(p);
+
+			// dataout is kilobytes queued for sending
+			int dataout = (curseq_ - maxseq_ - 1) * (size_ + headersize()) / 1024;
+			int qs_rr = rate_request_;
+			if (qs_request_mode_ == 1) {
+				// PS: Avoid making unnecessary QS requests
+				// use a rough estimation of RTT in qs_rtt_
+				// to calculate the desired rate from dataout.
+				if (dataout * 1000 / qs_rtt_ &lt; qs_rr) {
+					qs_rr = dataout * 1000 / qs_rtt_;
+				}
+				// qs_thresh_ is minimum number of unsent
+				// segments needed to activate QS request
+				if ((curseq_ - maxseq_ - 1) &lt; qs_thresh_) {
+					qs_rr = 0;
+				}
+			}
+
+		    	if (qs_rr &gt; 0) {
+				// QuickStart code from Srikanth Sundarrajan.
+				qsh-&gt;flag() = QS_REQUEST;
+				qsh-&gt;ttl() = Random::integer(256);
+				ttl_diff_ = (iph-&gt;ttl() - qsh-&gt;ttl()) &percnt; 256;
+				qsh-&gt;rate() = hdr_qs::Bps_to_rate(qs_rr * 1024);
+				qs_requested_ = 1;
+		    	} else {
+				qsh-&gt;flag() = QS_DISABLE;
+			}
+		}
+	}
+	else if (useHeaders_ == true) {               //不是第一个分组
+		hdr_cmn::access(p)-&gt;size() += headersize();    //计算分组头大小
+	}
+        hdr_cmn::access(p)-&gt;size();
+
+	/* if no outstanding data, be sure to set rtx timer again */
+	if (highest_ack_ == maxseq_)           //最高的已确认ACK号＝最大已发分组号，表示已发送的全都得到了确认，
+		force_set_rtx_timer = 1;               //该数据肯定为新的未收到ACK的数据，肯定要重新设置重传定时器，原因见后面的&ldquo;注&rdquo;
+	/* call helper function to fill in additional fields */
+	output_helper(p);                           
+
+        ++ndatapack_;                          //统计总的发送分组数
+        ndatabytes_ += databytes;         //统计总发送字节数
+	send(p, 0);                                   //发送该分组
+	if (seqno == curseq_ &amp;&amp; seqno &gt; maxseq_)      //发送序号＝最大允许发送序号，表示已发完
+		idle();  // 告诉应用程序已经发完数据         Tell application I have sent everything so far
+	if (seqno &gt; maxseq_) {           //发送序号&gt;上次最大发送序号，表示是新发送分组
+		maxseq_ = seqno;             //新发送分组，记录最大发送序号
+		if (!rtt_active_) {                //如果上一个RTT样本刚刚收到，rtt_active=1表示正在等待RTT接收样本ACK返回
+			rtt_active_ = 1;              //表示本分组是新的RTT样本,rtt开始新的计算
+			if (seqno &gt; rtt_seq_) {    //若发送序号&gt;上次RTT样本号
+				rtt_seq_ = seqno;       //则本序号是新的RTT样本
+				rtt_ts_ = Scheduler::instance().clock();    //且记录该样本的发送时间戳
+			}
+					
+		}
+	} else {     //不是新分组了，则是重传
+        	++nrexmitpack_;     //统计重传分组数
+		nrexmitbytes_ += databytes;   //统计重传字节数
+	}
+	if (!(rtx_timer_.status() == TIMER_PENDING) || force_set_rtx_timer) 
+	                  /*TIMER_PENDING表示超时重传定时器在等待状态，即对定时器定时的分组号尚未收到ACK，
+	                 若该分组的ACK刚刚收到，或在强制重传定时器的情况时，对重传定时器重新设定超时 */
+		/* No timer pending.  Schedule one. */
+		set_rtx_timer();
+}
+/* 
+         注：重传定时的原理：只设定一个重传定时器，对每一个发送的分组号，设为A，
+设为检查定时器是否已经在用，若没有用，则设定该定时器，此时该定时器对应该分组号；
+若在用，则不修改，继续传该分组。
+        当收到对方对分组A的确认ACK，则将重新设定定时器，到下一个分组号A+1，此时定时器对应A+1分组；
+以后，每收到一个新确认，都将定时器对应到该分组号+1。即每次都对第一个未被确认的分组进行监控，
+ 保证此分组一旦得不到确认就超时。           
+  */
+
+
+
+/*
+ * Must convert bytes into packets for one-way TCPs.
+ * If nbytes == -1, this corresponds to infinite send.  We approximate
+ * infinite by a very large number (TCP_MAXSEQ).
+ */
+ //该程序由上层应用调用，用来产生TCP流，完成tcp连接、传输、结束全过程，而不用管数据具体怎么传输
+void TcpAgent::sendmsg(int nbytes, const char* /*flags*/)      //若nbyte=-1,表示发送允许的无限多数据
+{
+	if (nbytes == -1 &amp;&amp; curseq_ &lt;= TCP_MAXSEQ)             //若无限发送，则确定发送的最大数据量
+		curseq_ = TCP_MAXSEQ; 
+	else
+		curseq_ += (nbytes/size_ + (nbytes&percnt;size_ ? 1 : 0));  //有限发送，则按字节数计算将发送的总的序列数
+	send_much(0, 0, maxburst_);              //尽量发送多的数据，直到发送完或连接终止，maxburst_是最大允许发送的数值，默认值0，表示不限数量
+}
+
+void TcpAgent::advanceby(int delta)
+{
+  curseq_ += delta;
+	if (delta &gt; 0)
+		closed_ = 0;
+	send_much(0, 0, maxburst_); 
+}
+
+
+int TcpAgent::command(int argc, const char*const* argv)
+{
+	if (argc == 3) {
+		if (strcmp(argv[1], &quot;advance&quot;) == 0) {
+			int newseq = atoi(argv[2]);
+			if (newseq &gt; maxseq_)
+				advanceby(newseq - curseq_);
+			else
+				advanceby(maxseq_ - curseq_);
+			return (TCL_OK);
+		}
+		if (strcmp(argv[1], &quot;advanceby&quot;) == 0) {
+			advanceby(atoi(argv[2]));
+			return (TCL_OK);
+		}
+		if (strcmp(argv[1], &quot;eventtrace&quot;) == 0) {
+			et_ = (EventTrace *)TclObject::lookup(argv[2]);
+			return (TCL_OK);
+		}
+		/*
+		 * Curtis Villamizar&#39;s trick to transfer tcp connection
+		 * parameters to emulate http persistent connections.
+		 *
+		 * Another way to do the same thing is to open one tcp
+		 * object and use start/stop/maxpkts_ or advanceby to control
+		 * how much data is sent in each burst.
+		 * With a single connection, slow_start_restart_
+		 * should be configured as desired.
+		 *
+		 * This implementation (persist) may not correctly
+		 * emulate pure-BSD-based systems which close cwnd
+		 * after the connection goes idle (slow-start
+		 * restart).  See appendix C in
+		 * Jacobson and Karels ``Congestion
+		 * Avoidance and Control&#39;&#39; at
+		 * <FTP://FTP.EE.LBL.GOV/PAPERS/CONGAVOID.PS.Z>
+		 * (*not* the original
+		 * &#39;88 paper) for why BSD does this.  See
+		 * ``Performance Interactions Between P-HTTP and TCP
+		 * Implementations&#39;&#39; in CCR 27(2) for descriptions of
+		 * what other systems do the same.
+		 *
+		 */
+		if (strcmp(argv[1], &quot;persist&quot;) == 0) {
+			TcpAgent *other
+			  = (TcpAgent*)TclObject::lookup(argv[2]);
+			cwnd_ = other-&gt;cwnd_;
+			awnd_ = other-&gt;awnd_;
+			ssthresh_ = other-&gt;ssthresh_;
+			t_rtt_ = other-&gt;t_rtt_;
+			t_srtt_ = other-&gt;t_srtt_;
+			t_rttvar_ = other-&gt;t_rttvar_;
+			t_backoff_ = other-&gt;t_backoff_;
+			return (TCL_OK);
+		}
+	}
+	return (Agent::command(argc, argv));
+}
+
+/*
+ * Returns the window size adjusted to allow <NUM> segments past recovery
+ * point to be transmitted on next ack.
+ */
+int TcpAgent::force_wnd(int num)
+{
+	return recover_ + num - (int)highest_ack_;
+}
+
+
+//整数型的发送窗口，发送窗口＝min(wnd_,cwnd_)
+int TcpAgent::window()
+{
+        /*
+         * If F-RTO is enabled and first ack has come in, temporarily open
+         * window for sending two segments.
+	 * The F-RTO code is from Pasi Sarolahti.  F-RTO is an algorithm
+	 * for detecting spurious retransmission timeouts.
+         */
+        if (frto_ == 2) {
+                return (force_wnd(2) &lt; wnd_ ?
+                        force_wnd(2) : (int)wnd_);
+        } else {
+		return (cwnd_ &lt; wnd_ ? (int)cwnd_ : (int)wnd_);
+        }
+}
+
+
+//双精度的发送窗口，发送窗口＝min(wnd_,cwnd_)
+double TcpAgent::windowd()
+{
+	return (cwnd_ &lt; wnd_ ? (double)cwnd_ : (double)wnd_);
+}
+
+
+/*被recv(),timeout(),timeout_nonrtx(),sendmsg()等调用
+ * Try to send as much data as the window will allow.  The link layer will 
+ * do the buffering; we ask the application layer for the size of the packets.
+ */
+void TcpAgent::send_much(int force, int reason, int maxburst)   
+ //在窗口范围内把尽量多的数据发出去，完成连接、传输、结束全过程
+{
+	send_idle_helper();
+	int win = window();                   //整型的发送窗口
+	int npackets = 0;                     // 本次发送分组数
+
+	if (!force &amp;&amp; delsnd_timer_.status() == TIMER_PENDING) //通常force＝0，在处理非重传的超时时为1
+		/*非重传超时，即延迟随机时间发送数据，用于模拟网络的延迟，由timeout_nonrtx()调用，再被DelSndTimer::expire()调用
+	         这里表示如果不是非重传超时，但延迟定时器还在工作，就不发送，直接退出  */
+		return;
+	/* Save time when first packet was sent, for newreno  --Allman */
+	if (t_seqno_ == 0)
+		firstsent_ = Scheduler::instance().clock();   //记录第一个分组发送时间，newreno用
+  
+	if (burstsnd_timer_.status() == TIMER_PENDING)       //？
+		return;
+	while (t_seqno_ &lt;= highest_ack_ + win &amp;&amp; t_seqno_ &lt; curseq_) {     
+		      //分组号在发送窗口内，且小于最大分组号，即满足条件就尽量发送，不满足条件才退出
+		if (overhead_ == 0 || force || qs_approved_) {  
+		        //overhead是固定值，默认0;force＝1，即非重传超时；qs，即快启动
+		        //只要是正常情况，或非重传超时，或快启动，就按下面运行
+			output(t_seqno_, reason);    //发送该分组，原因发到对端
+			npackets++;       //已发送分组数记录
+			if (QOption_)
+				process_qoption_after_send () ; 
+			t_seqno_ ++ ;     //将要发送分组号＋1
+			if (qs_approved_ == 1) {
+				// delay = effective RTT / window
+				double delay = (double) t_rtt_ * tcp_tick_ / win;
+				if (overhead_) { 
+					delsnd_timer_.resched(delay + Random::uniform(overhead_));
+				} else {
+					delsnd_timer_.resched(delay);
+				}
+				return;
+			}
+		} else if (!(delsnd_timer_.status() == TIMER_PENDING)) {   
+			//不是上面的三种情况，但延迟定时器没有等待了，就重新设置随机延迟时间，并返回
+			/*
+			 * Set a delayed send timeout.
+			 */
+			delsnd_timer_.resched(Random::uniform(overhead_));
+			return;
+		}
+		win = window();    //发送了一个分组，发送窗口重新计算
+		if (maxburst &amp;&amp; npackets == maxburst)   //maxburst是一次最多发送的分组数，默认为0，表示不限制数量
+			break;
+	}
+	/* call helper function */
+	send_helper(maxburst);
+}
+
+
+
+/*主要在timeout()、dupack_action()中使用
+ * We got a timeout or too many duplicate acks.  Clear the retransmit timer.  
+ * Resume the sequence one past the last packet acked.  
+ * &quot;mild&quot; is 0 for timeouts and Tahoe dup acks, 1 for Reno dup acks.
+ * &quot;backoff&quot; is 1 if the timer should be backed off, 0 otherwise.
+ */
+void TcpAgent::reset_rtx_timer(int mild, int backoff)
+{
+	if (backoff)           //重传时，backoff=1,见timeout(),表示要对RTO做出调整，RTO=RTO*2
+		rtt_backoff();
+	set_rtx_timer();       //根据调整
+	if (!mild)               //程序只用到了mild=0的情况，RENO用到mild=1的情况
+		t_seqno_ = highest_ack_ + 1;
+	rtt_active_ = 0;
+}
+
+
+
+/*
+ * Set retransmit timer using current rtt estimate.  By calling resched(), 
+ * it does not matter whether the timer was already running.
+ */
+void TcpAgent::set_rtx_timer()
+{
+	rtx_timer_.resched(rtt_timeout());
+}
+
+
+
+/*只被newack()调用，用来设置重传定时器，pkt是接收到的ACK分组
+ * Set new retransmission timer if not all outstanding
+ * or available data acked, or if we are unable to send because 
+ * cwnd is less than one (as when the ECN bit is set when cwnd was 1).
+ * Otherwise, if a timer is still outstanding, cancel it.
+ */
+void TcpAgent::newtimer(Packet* pkt)
+{
+	hdr_tcp *tcph = hdr_tcp::access(pkt);
+	/*
+	 * t_seqno_, the next packet to send, is reset (decreased) 
+	 *   to highest_ack_ + 1 after a timeout,
+	 *   so we also have to check maxseq_, the highest seqno sent.
+	 * In addition, if the packet sent after the timeout has
+	 *   the ECN bit set, then the returning ACK caused cwnd_ to
+	 *   be decreased to less than one, and we can&#39;t send another
+	 *   packet until the retransmit timer again expires.
+	 *   So we have to check for &quot;cwnd_ &lt; 1&quot; as well.
+	 */
+	 //当前将发送序号&gt;本次接收ack号
+	if (t_seqno_ &gt; tcph-&gt;seqno() || tcph-&gt;seqno() &lt; maxseq_ || cwnd_ &lt; 1) 
+		set_rtx_timer();
+	else
+		cancel_rtx_timer();       //程序中没有该子程序
+}
+
+
+
+/*
+ * for experimental, high-speed TCP
+ */
+double TcpAgent::linear(double x, double x_1, double y_1, double x_2, double y_2)
+{
+	// The y coordinate factor ranges from y_1 to y_2
+	//  as the x coordinate ranges from x_1 to x_2.
+	double y = y_1 + ((y_2 - y_1) * ((x - x_1)/(x_2-x_1)));
+	return y;
+}
+
+
+
+/*
+ * Limited Slow-Start for large congestion windows.
+ * This is only used when max_ssthresh_ is non-zero.
+ */
+double TcpAgent::limited_slow_start(double cwnd, double max_ssthresh, double increment)
+{
+	int round = int(cwnd / (double(max_ssthresh)/2.0));
+	double increment1 = 1.0/(double(round)); 
+	if (increment &lt; increment1)
+		increment = increment1;
+	return increment;
+}
+
+
+
+/*
+ * For retrieving numdupacks_.
+ */
+int TcpAgent::numdupacks(double cwnd)
+{
+        int cwndfraction = (int) cwnd/numdupacksFrac_;
+	if (numdupacks_ &gt; cwndfraction) {
+	  	return numdupacks_;
+        } else {
+	  	return cwndfraction;
+	}
+}
+
+
+
+/*
+ * Calculating the decrease parameter for highspeed TCP.
+ */
+double TcpAgent::decrease_param()
+{
+	double decrease;
+	// OLD:
+	// decrease = linear(log(cwnd_), log(low_window_), 0.5, log(high_window_), high_decrease_);
+	// NEW (but equivalent):
+        decrease = hstcp_.dec1 + log(cwnd_) * hstcp_.dec2;  
+	return decrease;
+}
+
+
+
+/*
+ * Calculating the increase parameter for highspeed TCP.
+ */
+double TcpAgent::increase_param()
+{
+	double increase, decrease, p, answer;
+	/* extending the slow-start for high-speed TCP */
+
+	/* for highspeed TCP -- from Sylvia Ratnasamy, */
+	/* modifications by Sally Floyd and Evandro de Souza */
+ 	// p ranges from 1.5/W^2 at congestion window low_window_, to
+	//    high_p_ at congestion window high_window_, on a log-log scale.
+        // The decrease factor ranges from 0.5 to high_decrease
+	//  as the window ranges from low_window to high_window, 
+	//  as the log of the window. 
+	// For an efficient implementation, this would just be looked up
+	//   in a table, with the increase and decrease being a function of the
+	//   congestion window.
+
+       if (cwnd_ &lt;= low_window_) { 
+		answer = 1 / cwnd_;
+       		return answer; 
+       } else if (cwnd_ &gt;= hstcp_.cwnd_last_ &amp;&amp; 
+	      cwnd_ &lt; hstcp_.cwnd_last_ + cwnd_range_) {
+	      // cwnd_range_ can be set to 0 to be disabled,
+	      //  or can be set from 1 to 100 
+       		answer = hstcp_.increase_last_ / cwnd_;
+              	return answer;
+       } else { 
+		// OLD:
+ 		// p = exp(linear(log(cwnd_), log(low_window_), log(hstcp_.low_p), log(high_window_), log(high_p_)));
+		// NEW, but equivalent:
+        	p = exp(hstcp_.p1 + log(cwnd_) * hstcp_.p2);  
+        	decrease = decrease_param();
+		// OLD:
+		// increase = cwnd_*cwnd_*p *(2.0*decrease)/(2.0 - decrease); 
+		// NEW, but equivalent:
+		increase = cwnd_ * cwnd_ * p /(1/decrease - 0.5);
+		//	if (increase &gt; max_increase) { 
+		//		increase = max_increase;
+		//	} 
+		answer = increase / cwnd_;
+		hstcp_.cwnd_last_ = cwnd_;
+		hstcp_.increase_last_ = increase;
+       		return answer;
+	}       
+}
+
+/*仅被recv_newack_helper()调用，再被recv调用，在收到新ACK后，用于慢启动和拥塞避免，调整CWND，不调整SSTHRESH
+ * open up the congestion window
+ */
+void TcpAgent::opencwnd()
+{
+	double increment;
+	if (cwnd_ &lt; ssthresh_) {     //慢启动情况，CWND=CWND+1,数据指数增加
+		/* slow-start (exponential) */
+		cwnd_ += 1;
+	} else {      //cwnd_&gt;=ssthresh_情况，CWND=CWND+1/CWND,数据线性增加
+		/* linear */
+		double f;
+		switch (wnd_option_) {      //wnd_option_是窗口策略，系统固定设置，默认为1
+		case 0:
+			if (++count_ &gt;= cwnd_) {
+				count_ = 0;
+				++cwnd_;
+			}
+			break;
+
+		case 1:                               //默认情况，其他的情况不用看
+			/* This is the standard algorithm. */
+			increment = increase_num_ / cwnd_; //increase_num_：加法增策略因子，默认1.0
+			                      //算出增加量1/CWND
+			if ((last_cwnd_action_ == 0 ||         //last_cwnd_action_初始化为0
+			  last_cwnd_action_ == CWND_ACTION_TIMEOUT) 
+			  &amp;&amp; max_ssthresh_ &gt; 0) {
+				increment = limited_slow_start(cwnd_,
+				  max_ssthresh_, increment);
+			}
+			cwnd_ += increment;
+			break;
+
+		case 2:
+			/* These are window increase algorithms
+			 * for experimental purposes only. */
+			/* This is the Constant-Rate increase algorithm 
+                         *  from the 1991 paper by S. Floyd on &quot;Connections  
+			 *  with Multiple Congested Gateways&quot;. 
+			 *  The window is increased by roughly 
+			 *  wnd_const_*RTT^2 packets per round-trip time.  */
+			f = (t_srtt_ &gt;&gt; T_SRTT_BITS) * tcp_tick_;
+			f *= f;
+			f *= wnd_const_;
+			/* f = wnd_const_ * RTT^2 */
+			f += fcnt_;
+			if (f &gt; cwnd_) {
+				fcnt_ = 0;
+				++cwnd_;
+			} else
+				fcnt_ = f;
+			break;
+
+		case 3:
+			/* The window is increased by roughly 
+			 *  awnd_^2 * wnd_const_ packets per RTT,
+			 *  for awnd_ the average congestion window. */
+			f = awnd_;
+			f *= f;
+			f *= wnd_const_;
+			f += fcnt_;
+			if (f &gt; cwnd_) {
+				fcnt_ = 0;
+				++cwnd_;
+			} else
+				fcnt_ = f;
+			break;
+
+                case 4:
+			/* The window is increased by roughly 
+			 *  awnd_ * wnd_const_ packets per RTT,
+			 *  for awnd_ the average congestion window. */
+                        f = awnd_;
+                        f *= wnd_const_;
+                        f += fcnt_;
+                        if (f &gt; cwnd_) {
+                                fcnt_ = 0;
+                                ++cwnd_;
+                        } else
+                                fcnt_ = f;
+                        break;
+		case 5:
+			/* The window is increased by roughly wnd_const_*RTT 
+			 *  packets per round-trip time, as discussed in
+			 *  the 1992 paper by S. Floyd on &quot;On Traffic 
+			 *  Phase Effects in Packet-Switched Gateways&quot;. */
+                        f = (t_srtt_ &gt;&gt; T_SRTT_BITS) * tcp_tick_;
+                        f *= wnd_const_;
+                        f += fcnt_;
+                        if (f &gt; cwnd_) {
+                                fcnt_ = 0;
+                                ++cwnd_;
+                        } else
+                                fcnt_ = f;
+                        break;
+                case 6:
+                        /* binomial controls */ 
+                        cwnd_ += increase_num_ / (cwnd_*pow(cwnd_,k_parameter_));                
+                        break; 
+ 		case 8: 
+			/* high-speed TCP, RFC 3649 */
+			increment = increase_param();
+			if ((last_cwnd_action_ == 0 ||
+			  last_cwnd_action_ == CWND_ACTION_TIMEOUT) 
+			  &amp;&amp; max_ssthresh_ &gt; 0) {
+				increment = limited_slow_start(cwnd_,
+				  max_ssthresh_, increment);
+			}
+			cwnd_ += increment;
+                        break;
+		default:
+#ifdef notdef
+			/*XXX*/
+			error(&quot;illegal window option &percnt;d&quot;, wnd_option_);
+#endif
+			abort();
+		}
+	}
+	// if maxcwnd_ is set (nonzero), make it the cwnd limit
+	if (maxcwnd_ &amp;&amp; (int(cwnd_) &gt; maxcwnd_))    //限制CWND,不能超过最大值，最大值默认为0，表示不限制
+		cwnd_ = maxcwnd_;
+
+	return;
+}
+
+
+//被timeout、dupack_action等调用，用来降低拥塞窗口CWND和门限SSTHRESH
+void
+TcpAgent::slowdown(int how)
+{
+	double decrease;  /* added for highspeed - sylvia */
+	double win, halfwin, decreasewin;
+	int slowstart = 0;    //慢启动参数，＝1表示是慢启动
+	++ncwndcuts_;        //统计CWND被减少的次数，不管任何原因
+	if (!(how &amp; TCP_IDLE) &amp;&amp; !(how &amp; NO_OUTSTANDING_DATA)){
+		++ncwndcuts1_;  //统计因拥塞CWND被减少的次数
+	}
+	// we are in slowstart for sure if cwnd &lt; ssthresh
+	if (cwnd_ &lt; ssthresh_)     	//判断是否在慢启动状态
+		slowstart = 1;
+
+       //下面一段分别按双精度和整型计算出发送窗口WND
+        if (precision_reduce_) {           //是否按双精度计算发送窗口win，而不是整数减，默认为FALSE
+		halfwin = windowd() / 2;
+                if (wnd_option_ == 6) {        //wnd_option_值见opencwnd()，默认＝1， ＝6或8不用看
+                        /* binomial controls */
+                        decreasewin = windowd() - (1.0-decrease_num_)*pow(windowd(),l_parameter_);
+                } else if (wnd_option_ == 8 &amp;&amp; (cwnd_ &gt; low_window_)) { 
+                        /* experimental highspeed TCP */
+			decrease = decrease_param();
+			//if (decrease &lt; 0.1) 
+			//	decrease = 0.1;
+			decrease_num_ = decrease;
+                        decreasewin = windowd() - (decrease * windowd());
+                } else {                 //wnd_option_＝1到5的情况，＝1是默认情况，见opencwnd()
+	 		decreasewin = decrease_num_ * windowd(); //decreasewin为窗口减少量
+		}
+		win = windowd();     //双精度发送窗口
+	} else  {            //默认情况，按整数计算发送窗口win，算法同上面一样
+		int temp;
+		temp = (int)(window() / 2);
+		halfwin = (double) temp;
+                if (wnd_option_ == 6) {
+                        /* binomial controls */
+                        temp = (int)(window() - (1.0-decrease_num_)*pow(window(),l_parameter_));
+                } else if ((wnd_option_ == 8) &amp;&amp; (cwnd_ &gt; low_window_)) { 
+                        /* experimental highspeed TCP */
+			decrease = decrease_param();
+			//if (decrease &lt; 0.1)
+                        //       decrease = 0.1;		
+			decrease_num_ = decrease;
+                        temp = (int)(windowd() - (decrease * windowd()));
+                } else {
+ 			temp = (int)(decrease_num_ * window());
+		}
+		decreasewin = (double) temp;
+		win = (double) window();    //整型发送窗口
+	}
+	
+//以下按照HOW的值，针对各种情况，减少CWND和SSTHRESH	
+	if (how &amp; CLOSE_SSTHRESH_HALF)
+		// For the first decrease, decrease by half
+		// even for non-standard values of decrease_num_.
+		if (first_decrease_ == 1 || slowstart ||              //在第一次减少，慢启动状态或超时重传时（为何第一次减少时一定要SSTHRESH减半？）
+			last_cwnd_action_ == CWND_ACTION_TIMEOUT) {   //SSTHRESH降低到一半，wnd_option_＝默认1时，下面两种算法应该一样
+				                                      //正常应该CWND=decreasewin
+			// Do we really want halfwin instead of decreasewin
+		// after a timeout?
+			ssthresh_ = (int) halfwin;
+		} else {
+			ssthresh_ = (int) decreasewin;                //即:SSTHRESH=CWND
+		}
+        else if (how &amp; THREE_QUARTER_SSTHRESH)        //SSTHRESH减少到3/4窗口
+		if (ssthresh_ &lt; 3*cwnd_/4)
+			ssthresh_  = (int)(3*cwnd_/4);
+	if (how &amp; CLOSE_CWND_HALF)                     //CWND减少一半
+		// For the first decrease, decrease by half
+		// even for non-standard values of decrease_num_.
+		if (first_decrease_ == 1 || slowstart || decrease_num_ == 0.5) {
+			cwnd_ = halfwin;
+		} else cwnd_ = decreasewin;   //如果设decreasewin为其他值，则是用于测试
+        else if (how &amp; CWND_HALF_WITH_MIN) {           //QOPTION,不看
+		// We have not thought about how non-standard TCPs, with
+		// non-standard values of decrease_num_, should respond
+		// after quiescent periods.
+                cwnd_ = decreasewin;
+                if (cwnd_ &lt; 1)
+                        cwnd_ = 1;
+	}
+	else if (how &amp; CLOSE_CWND_RESTART)         //超时时使SSTHRESH减半，CWND＝1
+		cwnd_ = int(wnd_restart_);         //wnd_restart_初始化为1
+	else if (how &amp; CLOSE_CWND_INIT)         //快速启动丢失时使用，不看
+		cwnd_ = int(wnd_init_);
+	else if (how &amp; CLOSE_CWND_ONE)       //无显著数据，重复ACK，及F-RTO时使 CWND=1
+		cwnd_ = 1;
+	else if (how &amp; CLOSE_CWND_HALF_WAY) {  //QOPTION时使用，不看
+		// cwnd_ = win - (win - W_used)/2 ;
+		cwnd_ = W_used + decrease_num_ * (win - W_used);
+                if (cwnd_ &lt; 1)
+                        cwnd_ = 1;
+	}
+	if (ssthresh_ &lt; 2)                 //SSTHRESH不能小于2
+		ssthresh_ = 2;           
+	if (how &amp; (CLOSE_CWND_HALF|CLOSE_CWND_RESTART|CLOSE_CWND_INIT|CLOSE_CWND_ONE))
+		cong_action_ = TRUE;        //根据HOW判断当前是否拥塞
+
+	fcnt_ = count_ = 0;                //用于wnd_option_＝2，3，4，5的情况，不看
+	if (first_decrease_ == 1)          //本次是第一次减少,下次就不是了：每次连接只有一次减少
+		first_decrease_ = 0;
+	// for event tracing slow start
+	if (cwnd_ == 1 || slowstart)        //跟踪慢启动
+		// Not sure if this is best way to capture slow_start
+		// This is probably tracing a superset of slowdowns of
+		// which all may not be slow_start&#39;s --Padma, 07/&#39;01.
+		trace_event(&quot;SLOW_START&quot;);
+	
+
+
+	
+}
+
+/*被recv_newack_helper()调用，recv_newack_helper再被recv()调用，pkt为接收ACK分组
+ * Process a packet that acks previously unacknowleged data.
+ */
+void TcpAgent::newack(Packet* pkt)
+{
+	double now = Scheduler::instance().clock();
+	hdr_tcp *tcph = hdr_tcp::access(pkt);
+	/* 
+	 * Wouldn&#39;t it be better to set the timer *after*
+	 * updating the RTT, instead of *before*? 
+	 */
+	if (!timerfix_) newtimer(pkt);      //采用在更新RTT以前更新RTO定时器的策略
+	dupacks_ = 0;                  //新ACK，将重复ACK的统计恢复为0
+	last_ack_ = tcph-&gt;seqno();    //	记录本次新ACK号到last_ack_
+	prev_highest_ack_ = highest_ack_ ; 
+	highest_ack_ = last_ack_;     //记录本次新ACK号到last_ack_
+
+	if (t_seqno_ &lt; last_ack_ + 1)     //	更新下一次要发送的包的记录
+		t_seqno_ = last_ack_ + 1;      
+	/* 
+	 * Update RTT only if it&#39;s OK to do so from info in the flags header.
+	 * This is needed for protocols in which intermediate agents
+	 * in the network intersperse acks (e.g., ack-reconstructors) for
+	 * various reasons (without violating e2e semantics).
+	 */	
+	hdr_flags *fh = hdr_flags::access(pkt);      
+		     //以下是有时间戳的RTT处理情况           
+	if (!fh-&gt;no_ts_) {                                        //该ACK有时间戳
+		if (ts_option_) {                                 //本连接可以采用时间戳
+			ts_echo_=tcph-&gt;ts_echo();                 //记录该新ACK的回应时间，相当于rtt_ts_
+			rtt_update(now - tcph-&gt;ts_echo());        //更新RTT值，now-回应时间即为rtt时间
+			if (ts_resetRTO_ &amp;&amp; (!ect_ || !ecn_backoff_ ||
+			    !hdr_flags::access(pkt)-&gt;ecnecho())) { 
+				// From Andrei Gurtov
+				/* 
+				 * Don&#39;t end backoff if still in ECN-Echo with
+			 	 * a congestion window of 1 packet. 
+				 */
+				t_backoff_ = 1;
+				ecn_backoff_ = 0;
+			}
+		}
+		if (rtt_active_ &amp;&amp; tcph-&gt;seqno() &gt;= rtt_seq_) {
+			if (!ect_ || !ecn_backoff_ || 
+				!hdr_flags::access(pkt)-&gt;ecnecho()) {
+				/* 
+				 * Don&#39;t end backoff if still in ECN-Echo with
+			 	 * a congestion window of 1 packet. 
+				 */
+				t_backoff_ = 1;
+				ecn_backoff_ = 0;
+			}
+			rtt_active_ = 0;
+			if (!ts_option_)                          //本连接不能采用时间戳
+				rtt_update(now - rtt_ts_);
+		}
+	}
+	             
+	if (timerfix_) newtimer(pkt);            //采用在更新RTT以前更新RTO定时器的策略，更科学
+	/* update average window */       //更新平均窗口awnd_=(1 - wnd_th_)*awnd+wnd_th_*cwnd
+	awnd_ *= 1.0 - wnd_th_;
+	awnd_ += wnd_th_ * cwnd_;
+}
+
+
+/*
+ * Respond either to a source quench or to a congestion indication bit.
+ * This is done at most once a roundtrip time;  after a source quench,
+ * another one will not be done until the last packet transmitted before
+ * the previous source quench has been ACKed.
+ *
+ * Note that this procedure is called before &quot;highest_ack_&quot; is
+ * updated to reflect the current ACK packet.  
+ */
+void TcpAgent::ecn(int seqno)
+{
+	if (seqno &gt; recover_ || 
+	      last_cwnd_action_ == CWND_ACTION_TIMEOUT) {
+		recover_ =  maxseq_;
+		last_cwnd_action_ = CWND_ACTION_ECN;
+		if (cwnd_ &lt;= 1.0) {
+			if (ecn_backoff_) 
+				rtt_backoff();
+			else ecn_backoff_ = 1;
+		} else ecn_backoff_ = 0;
+		slowdown(CLOSE_CWND_HALF|CLOSE_SSTHRESH_HALF);
+		++necnresponses_ ;
+		// added by sylvia to count number of ecn responses 
+	}
+}
+
+/*
+ *  Is the connection limited by the network (instead of by a lack
+ *    of data from the application?
+ */
+int TcpAgent::network_limited() {
+	int win = window () ;
+	if (t_seqno_ &gt; (prev_highest_ack_ + win))
+		return 1;
+	else
+		return 0;
+}
+
+//由recv()调用，收到新ACK的情况，用于新ack处理（newack(pkt)），及cwnd设置，关闭连接等处理
+void TcpAgent::recv_newack_helper(Packet *pkt) {
+	//hdr_tcp *tcph = hdr_tcp::access(pkt);
+	newack(pkt);                                                  //新ACK处理
+        if (qs_window_ &amp;&amp; highest_ack_ &gt;= qs_window_) {                     //QS处理，不用看
+                // All segments in the QS window have been acknowledged.
+                // We can exit the Quick-Start phase.
+                qs_window_ = 0;
+        }
+	if (!ect_ || !hdr_flags::access(pkt)-&gt;ecnecho() ||        //不是ECN分组，或&quot;old ecn&quot;。正常的新分组
+		(old_ecn_ &amp;&amp; ecn_burst_)) {
+		/* If &quot;old_ecn&quot;, this is not the first ACK carrying ECN-Echo
+		 * after a period of ACKs without ECN-Echo.
+		 * Therefore, open the congestion window. */
+		/* if control option is set, and the sender is not
+			 window limited, then do not increase the window size 
+			control_increase_设为1，则发方窗口不受限，不用增加窗口大小？
+			 */
+		
+		if (!control_increase_ ||                 //control_increase_系统固定值，默认为0
+		   (control_increase_ &amp;&amp; (network_limited() == 1))) 
+	      		opencwnd();            //正常情况，收到新ACK，就打开CWND设置
+	}
+	if (ect_) {                                              //是ECN分组
+		if (!hdr_flags::access(pkt)-&gt;ecnecho())
+			ecn_backoff_ = 0;
+		if (!ecn_burst_ &amp;&amp; hdr_flags::access(pkt)-&gt;ecnecho())
+			ecn_burst_ = TRUE;
+		else if (ecn_burst_ &amp;&amp; ! hdr_flags::access(pkt)-&gt;ecnecho())
+			ecn_burst_ = FALSE;
+	}
+	if (!ect_ &amp;&amp; hdr_flags::access(pkt)-&gt;ecnecho() &amp;&amp;
+		!hdr_flags::access(pkt)-&gt;cong_action())
+		ect_ = 1;
+	/* if the connection is done, call finish() */
+	if ((highest_ack_ &gt;= curseq_-1) &amp;&amp; !closed_) {      //最大ACK&gt;=应用程序最大值-1，表示连接结束
+		closed_ = 1;          //关闭连接，运行finish();                      
+		finish();
+	}
+	if (QOption_ &amp;&amp; curseq_ == highest_ack_ +1) {     //不看
+		cancel_rtx_timer();
+	}
+	if (frto_ == 1) {                              
+		/*
+		 * New ack after RTO. If F-RTO is enabled, try to transmit new
+		 * previously unsent segments.
+		 * If there are no new data or receiver window limits the
+		 * transmission, revert to traditional recovery.
+		 */
+		if (recover_ + 1 &gt;= highest_ack_ + wnd_ ||
+		    recover_ + 1 &gt;= curseq_) {
+			frto_ = 0;
+ 		} else if (highest_ack_ == recover_) {
+ 			/*
+ 			 * F-RTO step 2a) RTO retransmission fixes whole
+			 * window =&gt; cancel F-RTO
+ 			 */
+ 			frto_ = 0;
+		} else {
+			t_seqno_ = recover_ + 1;
+			frto_ = 2;
+		}
+	} else if (frto_ == 2) {
+		/*
+		 * Second new ack after RTO. If F-RTO is enabled, RTO can be
+		 * declared spurious
+		 */
+		spurious_timeout();
+	}
+}
+
+/*
+ * Set the initial window. 
+ */
+double
+TcpAgent::initial_window()
+{
+        // If Quick-Start Request was approved, use that as a basis for
+        // initial window
+        if (qs_cwnd_) {
+                return (qs_cwnd_);
+        }
+	//
+	// init_option = 1: static iw of wnd_init_
+	//
+	if (wnd_init_option_ == 1) {    //使用默认初始启动窗口
+		return (wnd_init_);
+	}
+        else if (wnd_init_option_ == 2) {  //使用大的初始启动窗口
+		// do iw according to Internet draft
+ 		if (size_ &lt;= 1095) {        //根据分组数据大小分段
+			return (4.0);
+	 	} else if (size_ &lt; 2190) {
+			return (3.0);
+		} else {
+			return (2.0);
+		}
+	}
+	// XXX what should we return here???
+	fprintf(stderr, &quot;Wrong number of wnd_init_option_ &percnt;d\n&quot;, 
+		wnd_init_option_);
+	abort();
+	return (2.0); // XXX make msvc happy.
+}
+
+/*
+ * Dupack-action: what to do on a DUP ACK.  After the initial check
+ * of &#39;recover&#39; below, this function implements the following truth
+ * table:
+ *
+ *	bugfix	ecn	last-cwnd == ecn	action
+ *
+ *	0	0	0			tahoe_action
+ *	0	0	1			tahoe_action	[impossible]
+ *	0	1	0			tahoe_action
+ *	0	1	1			slow-start, return
+ *	1	0	0			nothing
+ *	1	0	1			nothing		[impossible]
+ *	1	1	0			nothing
+ *	1	1	1			slow-start, return
+ */
+
+/* 
+ * A first or second duplicate acknowledgement has arrived, and
+ * singledup_ is enabled.
+ * If the receiver&#39;s advertised window permits, and we are exceeding our
+ * congestion window by less than numdupacks_, then send a new packet.
+ */
+//发送单个分组，可以是重传分组
+void
+TcpAgent::send_one()
+{
+	if (t_seqno_ &lt;= highest_ack_ + wnd_ &amp;&amp; t_seqno_ &lt; curseq_ &amp;&amp;
+		t_seqno_ &lt;= highest_ack_ + cwnd_ + dupacks_ ) {
+		output(t_seqno_, 0);  //
+		if (QOption_)
+			process_qoption_after_send () ;
+		t_seqno_ ++ ;
+		// send_helper(); ??
+	}
+	return;
+}
+
+
+//在recv()中，满足了快速重传的条件后调用，用于减少CWND和SSTHRESH,并重启重传定时器
+void
+TcpAgent::dupack_action()    
+{
+	int recovered = (highest_ack_ &gt; recover_);  
+	            //recover_用于记录超时和快速重传前已发送分组的最大序号,用于F-RTO
+	if (recovered || (!bug_fix_ &amp;&amp; !ecn_)) {
+		goto tahoe_action;                      //跳到tahoe_action
+	}
+
+	if (ecn_ &amp;&amp; last_cwnd_action_ == CWND_ACTION_ECN) {        //不看
+		last_cwnd_action_ = CWND_ACTION_DUPACK;
+		slowdown(CLOSE_CWND_ONE);
+		reset_rtx_timer(0,0);
+		return;
+	}
+
+	if (bug_fix_) {
+		/*
+		 * The line below, for &quot;bug_fix_&quot; true, avoids
+		 * problems with multiple fast retransmits in one
+		 * window of data. 
+		 */
+		return;
+	}
+
+tahoe_action:                                     //tcp tahoe
+        recover_ = maxseq_;                  //记录超时和快速重传前已发送分组的最大序号
+        if (!lossQuickStart()) {                //
+		// we are now going to fast-retransmit and willtrace that event
+		trace_event(&quot;FAST_RETX&quot;);         //跟踪快速重传
+		last_cwnd_action_ = CWND_ACTION_DUPACK;    //记录本次快速重传
+		slowdown(CLOSE_SSTHRESH_HALF|CLOSE_CWND_ONE);    //SSTHRESH减半，CWND＝1
+	}
+	reset_rtx_timer(0,0);             	//重设重传定时器
+	return;
+}
+
+/*
+ * When exiting QuickStart, reduce the congestion window to the
+ *   size that was actually used.
+ */
+void TcpAgent::endQuickStart()
+{
+	qs_approved_ = 0;
+        qs_cwnd_ = 0;
+        qs_window_ = maxseq_;
+	int new_cwnd = maxseq_ - last_ack_;
+	if (new_cwnd &gt; 1 &amp;&amp; new_cwnd &lt; cwnd_) {
+	 	cwnd_ = new_cwnd;
+		if (cwnd_ &lt; initial_window()) 
+			cwnd_ = initial_window();
+	}
+}
+
+void TcpAgent::processQuickStart(Packet *pkt)
+{
+	// QuickStart code from Srikanth Sundarrajan.
+	hdr_tcp *tcph = hdr_tcp::access(pkt);
+	hdr_qs *qsh = hdr_qs::access(pkt);
+	double now = Scheduler::instance().clock();
+	int app_rate;
+
+        // printf(&quot;flag: &percnt;d ttl: &percnt;d ttl_diff: &percnt;d rate: &percnt;d\n&quot;, qsh-&gt;flag(),
+	//     qsh-&gt;ttl(), ttl_diff_, qsh-&gt;rate());
+	qs_requested_ = 0;
+	qs_approved_ = 0;
+	if (qsh-&gt;flag() == QS_RESPONSE &amp;&amp; qsh-&gt;ttl() == ttl_diff_ &amp;&amp; 
+            qsh-&gt;rate() &gt; 0) {
+                app_rate = (int) (hdr_qs::rate_to_Bps(qsh-&gt;rate()) *
+                      (now - tcph-&gt;ts_echo()) / (size_ + headersize()));
+#ifdef QS_DEBUG
+		printf(&quot;Quick Start approved, rate &percnt;d, window &percnt;d\n&quot;, 
+				     qsh-&gt;rate(), app_rate);
+#endif
+                if (app_rate &gt; initial_window()) {
+			qs_cwnd_ = app_rate;
+                        qs_approved_ = 1;
+                }
+        } else { // Quick Start rejected
+#ifdef QS_DEBUG
+                printf(&quot;Quick Start rejected\n&quot;);
+#endif
+        }
+
+}
+
+
+
+/*
+ * ACK has been received, hook from recv()
+ */
+void TcpAgent::recv_frto_helper(Packet *pkt)
+{
+	hdr_tcp *tcph = hdr_tcp::access(pkt);
+	if (tcph-&gt;seqno() == last_ack_ &amp;&amp; frto_ != 0) {
+		/*
+		 * Duplicate ACK while in F-RTO indicates that the
+		 * timeout was valid. Go to slow start retransmissions.
+		 */
+		t_seqno_ = highest_ack_ + 1;
+		cwnd_ = frto_;
+		frto_ = 0;
+
+		// Must zero dupacks (in order to trigger send_much at recv)
+		// dupacks is increased in recv after exiting this function
+		dupacks_ = -1;
+	}
+}
+
+
+/*
+ * A spurious timeout has been detected. Do appropriate actions.
+ */
+void TcpAgent::spurious_timeout()
+{
+	frto_ = 0;
+
+	switch (spurious_response_) {
+	case 1:
+	default:
+		/*
+		 * Full revert of congestion window
+		 * (FlightSize before last acknowledgment)
+		 */
+		cwnd_ = t_seqno_ - prev_highest_ack_;
+		break;
+ 
+	case 2:
+		/*
+		 * cwnd = reduced ssthresh (approx. half of the earlier pipe)
+		 */
+		cwnd_ = ssthresh_; break;
+	case 3:
+		/*
+		 * slow start, but without retransmissions
+		 */
+		cwnd_ = 1; break;
+	}
+
+	/*
+	 * Revert ssthresh to size before retransmission timeout
+	 */
+	ssthresh_ = pipe_prev_;
+
+	/* If timeout was spurious, bugfix is not needed */
+	recover_ = highest_ack_ - 1;
+}
+
+
+/*
+ * Loss occurred in Quick-Start window.
+ * If Quick-Start is enabled, packet loss in the QS phase should
+ * trigger slow start instead of the regular fast retransmit,
+ * see [draft-amit-quick-start-03.txt] (to appear).
+ * We use variable tcp_qs_recovery_ to toggle this behaviour on and off.
+ * If tcp_qs_recovery_ is true, initiate slow start to probe for
+ * a correct window size.
+ *
+ * Return value: non-zero if Quick-Start specific loss recovery took place
+ */
+int TcpAgent::lossQuickStart()
+{
+       if (qs_window_ &amp;&amp; tcp_qs_recovery_) {
+                //recover_ = maxseq_;
+                //reset_rtx_timer(1,0);
+                slowdown(CLOSE_CWND_INIT);
+		// reset ssthresh to half of W-D/2?
+                qs_window_ = 0;
+                output(last_ack_ + 1, TCP_REASON_DUPACK);
+                return 1;
+       }
+       return 0;
+}
+
+
+
+
+/*
+ * main reception path - should only see acks, otherwise the
+ * network connections are misconfigured
+ */
+void TcpAgent::recv(Packet *pkt, Handler*)
+{
+	hdr_tcp *tcph = hdr_tcp::access(pkt);               //接受分组TCP头
+	int valid_ack = 0;
+	if (qs_approved_ == 1 &amp;&amp; tcph-&gt;seqno() &gt; last_ack_)           //快启动处理，不看 
+		endQuickStart();
+	if (qs_requested_ == 1)
+		processQuickStart(pkt);
+#ifdef notdef
+	if (pkt-&gt;type_ != PT_ACK) {                                         //ACK包类型判断
+		Tcl::instance().evalf(&quot;&percnt;s error \&quot;received non-ack\&quot;&quot;,
+				      name());
+		Packet::free(pkt);
+		return;                                                                   //不是ACK包，退出
+	}
+#endif
+	/* W.N.: check if this is from a previous incarnation */
+	if (tcph-&gt;ts() &lt; lastreset_) {            //判断是否上次连接的尸体包
+		// Remove packet and do nothing
+		Packet::free(pkt);                    //是尸体分组，释放该分组内存，并退出
+		return;
+	}
+	++nackpack_;                              //ACK包数＋1
+	ts_peer_ = tcph-&gt;ts();                   //记录对端发此ACK包时的时间
+	int ecnecho = hdr_flags::access(pkt)-&gt;ecnecho();       //ECN处理，不看
+	if (ecnecho &amp;&amp; ecn_)
+		ecn(tcph-&gt;seqno());
+	recv_helper(pkt);                                                      //helper处理，不必看
+	recv_frto_helper(pkt);
+	/* grow cwnd and check if the connection is done */ 
+	if (tcph-&gt;seqno() &gt; last_ack_) {                 //本ACK序号&gt;上次记录的ACK序号，表示是新的ACK       
+		recv_newack_helper(pkt);                     //新ACK的helper
+		if (last_ack_ == 0 &amp;&amp; delay_growth_) {     //是连接以来的第一个ACK
+			cwnd_ = initial_window();                    //初始化CWND
+		}                                                      //下面一段处理重复ACK
+	} else if (tcph-&gt;seqno() == last_ack_) {                // 不是新ACK,是上次的重复ACK
+                if (hdr_flags::access(pkt)-&gt;eln_ &amp;&amp; eln_) {            //ELN处理，不必看
+                        tcp_eln(pkt);
+                        return;
+                }
+		if (++dupacks_ == numdupacks_ &amp;&amp; !noFastRetrans_) {   //重复ACK数＝numdupacks并且允许快速重传时，表示满足了快速快速重传条件，但tahoe中不支持快速重传
+			dupack_action();                                           //快速重传动作，用于减少CWND和SSTHRESH,并重启重传定时器
+		} else if (dupacks_ &lt; numdupacks_ &amp;&amp; singledup_ ) {    //这里singledup_是系统的固定值，这里使TCP不采用快速重传策略，
+			send_one();                                                            //而是收到一个或两个重复ACK，就重传的策略
+		}
+	}
+
+	if (QOption_ &amp;&amp; EnblRTTCtr_)                                            //QOPTION，不必看
+		process_qoption_after_ack (tcph-&gt;seqno());
+
+	if (tcph-&gt;seqno() &gt;= last_ack_)                                          //本ACK序号&gt;=上次ACK，表示是新ACK或重复ACK,是合法的
+		// Check if ACK is valid.  Suggestion by Mark Allman. 
+		valid_ack = 1;
+	Packet::free(pkt);                                                             //合法，回收该分组内存
+	/*
+	 * Try to send more data.
+	 */
+	if (valid_ack || aggressive_maxburst_)   //aggressive_maxburst_默认为1，接收处理完了，继续发送尽可能多的分组
+		send_much(0, 0, maxburst_);
+}
+
+
+
+
+/*处理非重传的超时，即用于将发送数据进行随机延迟，模拟网络的延迟情况
+ * Process timeout events other than rtx timeout. Having this as a separate 
+ * function allows derived classes to make alterations/enhancements (e.g.,
+ * response to new types of timeout events).
+ */ 
+void TcpAgent::timeout_nonrtx(int tno) 
+{
+	if (tno == TCP_TIMER_DELSND)  {
+	 /*
+	 	* delayed-send timer, with random overhead
+	 	* to avoid phase effects
+	 	*/
+		send_much(1, TCP_REASON_TIMEOUT, maxburst_);
+	}
+}
+
+
+
+
+//直接被几个定时器的expire()调用，即在超时后，各定时器通过超时类型，选择执行下面代码	
+void TcpAgent::timeout(int tno)
+{
+	/* retransmit timer */
+	if (tno == TCP_TIMER_RTX) {               //超时重传的情况
+
+		// There has been a timeout - will trace this event
+		trace_event(&quot;TIMEOUT&quot;);              //跟踪超时
+
+		frto_ = 0;                                  //F-RTO        
+		// Set pipe_prev as per Eifel Response
+		pipe_prev_ = (window() &gt; ssthresh_) ?
+			window() : (int)ssthresh_;
+
+	        if (cwnd_ &lt; 1) cwnd_ = 1;             //CWND至少为1
+		if (qs_approved_ == 1) qs_approved_ = 0;
+		
+		//此段对SSTHRESH和CWND做出调整
+		if (highest_ack_ == maxseq_ &amp;&amp; !slow_start_restart_) {
+			/* 无显著数据：即发送的数据都已收到了应答
+			   这是无显著数据并且不是慢启动重启的情况，什么都不做，正常不会出现
+			 * TCP option:
+			 * If no outstanding data, then don&#39;t do anything.  
+			 */
+			 // Should this return be here?
+			 // What if CWND_ACTION_ECN and cwnd &lt; 1?
+			 // return;
+		} else {  //
+			recover_ = maxseq_;
+			if (highest_ack_ == -1 &amp;&amp; wnd_init_option_ == 2)
+				/* 上次ack号为－1，表示未收到ACK,第一个分组丢失了
+				 * First packet dropped, so don&#39;t use larger
+				 * initial windows. 
+				 */
+				wnd_init_option_ = 1;
+			if (highest_ack_ == maxseq_ &amp;&amp; restart_bugfix_)
+			       /* 无显著数据的情况
+				* if there is no outstanding data, don&#39;t cut 
+				* down ssthresh_.
+				*/
+				slowdown(CLOSE_CWND_ONE|NO_OUTSTANDING_DATA);
+			else if (highest_ack_ &lt; recover_ &amp;&amp;
+			  last_cwnd_action_ == CWND_ACTION_ECN) {
+			       /*
+				* if we are in recovery from a recent ECN,
+				* don&#39;t cut down ssthresh_.
+				*/
+				slowdown(CLOSE_CWND_ONE);
+				if (frto_enabled_ || sfrto_enabled_) {
+					frto_ = 1;
+				}
+			}
+			else {  //
+				++nrexmit_;         //重传超时计数＋1
+				last_cwnd_action_ = CWND_ACTION_TIMEOUT;   //记录本次超时
+				slowdown(CLOSE_SSTHRESH_HALF|CLOSE_CWND_RESTART); //超时，ssthresh减半，cwnd重启动
+				if (frto_enabled_ || sfrto_enabled_) {
+					frto_ = 1;
+				}
+			}
+		}
+		/* if there is no outstanding data, don&#39;t back off rtx timer */
+		if (highest_ack_ == maxseq_ &amp;&amp; restart_bugfix_) {   	//无显著数据，重新设置重传定时器
+			reset_rtx_timer(0,0);
+		}
+		else {
+			reset_rtx_timer(0,1);         //这是发送的数据有未收到ACK的情况,这时是重传，backoff＝1，使RTO翻倍
+		}
+		last_cwnd_action_ = CWND_ACTION_TIMEOUT;  //记录本次超时
+		send_much(0, TCP_REASON_TIMEOUT, maxburst_);   //重传尽可能多的数据
+	} 
+	else {
+		timeout_nonrtx(tno);         //不是超时重传的情况，如：tno == TCP_TIMER_DELSND
+	}
+}
+
+
+
+/* 
+ * Check if the packet (ack) has the ELN bit set, and if it does, and if the
+ * last ELN-rxmitted packet is smaller than this one, then retransmit the
+ * packet.  Do not adjust the cwnd when this happens.
+ */
+void TcpAgent::tcp_eln(Packet *pkt)
+{
+        //int eln_rxmit;
+        hdr_tcp *tcph = hdr_tcp::access(pkt);
+        int ack = tcph-&gt;seqno();
+
+        if (++dupacks_ == eln_rxmit_thresh_ &amp;&amp; ack &gt; eln_last_rxmit_) {
+                /* Retransmit this packet */
+                output(last_ack_ + 1, TCP_REASON_DUPACK);
+                eln_last_rxmit_ = last_ack_+1;
+        } else
+                send_much(0, 0, maxburst_);
+
+        Packet::free(pkt);
+        return;
+}
+
+
+
+/*
+ * This function is invoked when the connection is done. It in turn
+ * invokes the Tcl finish procedure that was registered with TCP.
+ */
+void TcpAgent::finish()
+{
+	Tcl::instance().evalf(&quot;&percnt;s done&quot;, this-&gt;name());
+}
+
+
+
+void RtxTimer::expire(Event*)
+{
+	a_-&gt;timeout(TCP_TIMER_RTX);
+}
+
+
+
+void DelSndTimer::expire(Event*)
+{
+	a_-&gt;timeout(TCP_TIMER_DELSND);
+}
+
+
+
+void BurstSndTimer::expire(Event*)
+{
+	a_-&gt;timeout(TCP_TIMER_BURSTSND);
+}
+
+/*
+ * THE FOLLOWING FUNCTIONS ARE OBSOLETE, but REMAIN HERE
+ * DUE TO OTHER PEOPLE&#39;s TCPs THAT MIGHT USE THEM
+ *
+ * These functions are now replaced by ecn() and slowdown(),
+ * respectively.
+ */
+
+
+
+/*
+ * Respond either to a source quench or to a congestion indication bit.
+ * This is done at most once a roundtrip time;  after a source quench,
+ * another one will not be done until the last packet transmitted before
+ * the previous source quench has been ACKed.
+ */
+//不被调用？是否其他非tahoe的TCP协议使用？
+void TcpAgent::quench(int how)
+{
+	if (highest_ack_ &gt;= recover_) {
+		recover_ =  maxseq_;
+		last_cwnd_action_ = CWND_ACTION_ECN;
+		closecwnd(how);
+	}
+}
+
+
+
+/*
+ * close down the congestion window
+ */
+//仅仅被quench所调用
+void TcpAgent::closecwnd(int how)
+{   
+	static int first_time = 1;
+	if (first_time == 1) {
+		fprintf(stderr, &quot;the TcpAgent::closecwnd() function is now deprecated, please use the function slowdown() instead\n&quot;);
+	}
+	switch (how) {
+	case 0:
+		/* timeouts */
+		ssthresh_ = int( window() / 2 );
+		if (ssthresh_ &lt; 2)
+			ssthresh_ = 2;
+		cwnd_ = int(wnd_restart_);
+		break;
+
+	case 1:
+		/* Reno dup acks, or after a recent congestion indication. */
+		// cwnd_ = window()/2;
+		cwnd_ = decrease_num_ * window();
+		ssthresh_ = int(cwnd_);
+		if (ssthresh_ &lt; 2)
+			ssthresh_ = 2;		
+		break;
+
+	case 2:
+		/* Tahoe dup acks  		
+		 * after a recent congestion indication */
+		cwnd_ = wnd_init_;
+		break;
+
+	case 3:
+		/* Retransmit timeout, but no outstanding data. */ 
+		cwnd_ = int(wnd_init_);
+		break;
+	case 4:
+		/* Tahoe dup acks */
+		ssthresh_ = int( window() / 2 );
+		if (ssthresh_ &lt; 2)
+			ssthresh_ = 2;
+		cwnd_ = 1;
+		break;
+
+	default:
+		abort();
+	}
+	fcnt_ = 0.;
+	count_ = 0;
+}
+
+
+
+/*
+ * Check if the sender has been idle or application-limited for more
+ * than an RTO, and if so, reduce the congestion window.
+ */
+void TcpAgent::process_qoption_after_send ()
+{
+	int tcp_now = (int)(Scheduler::instance().clock()/tcp_tick_ + 0.5);
+	int rto = (int)(t_rtxcur_/tcp_tick_) ; 
+	/*double ct = Scheduler::instance().clock();*/
+
+	if (!EnblRTTCtr_) {
+		if (tcp_now - T_last &gt;= rto) {
+			// The sender has been idle.
+		 	slowdown(THREE_QUARTER_SSTHRESH|TCP_IDLE) ;
+			for (int i = 0 ; i &lt; (tcp_now - T_last)/rto; i ++) {
+				slowdown(CWND_HALF_WITH_MIN|TCP_IDLE);
+			}
+			T_prev = tcp_now ;
+			W_used = 0 ;
+		}
+		T_last = tcp_now ;
+		if (t_seqno_ == highest_ack_+ window()) {
+			T_prev = tcp_now ; 
+			W_used = 0 ; 
+		}
+		else if (t_seqno_ == curseq_-1) {
+			// The sender has no more data to send.
+			int tmp = t_seqno_ - highest_ack_ ;
+			if (tmp &gt; W_used)
+				W_used = tmp ;
+			if (tcp_now - T_prev &gt;= rto) {
+				// The sender has been application-limited.
+				slowdown(THREE_QUARTER_SSTHRESH|TCP_IDLE);
+				slowdown(CLOSE_CWND_HALF_WAY|TCP_IDLE);
+				T_prev = tcp_now ;
+				W_used = 0 ;
+			}
+		}
+	} else {
+		rtt_counting();
+	}
+}
+
+
+
+/*
+ * Check if the sender has been idle or application-limited for more
+ * than an RTO, and if so, reduce the congestion window, for a TCP sender
+ * that &quot;counts RTTs&quot; by estimating the number of RTTs that fit into
+ * a single clock tick.
+ */
+//仅被process_qoption_after_send ()所调用，不看
+void
+TcpAgent::rtt_counting()
+{
+        int tcp_now = (int)(Scheduler::instance().clock()/tcp_tick_ + 0.5);
+	int rtt = (int(t_srtt_) &gt;&gt; T_SRTT_BITS) ;
+
+	if (rtt &lt; 1) 
+		rtt = 1 ;
+	if (tcp_now - T_last &gt;= 2*rtt) {
+		// The sender has been idle.
+		int RTTs ; 
+		RTTs = (tcp_now -T_last)*RTT_goodcount/(rtt*2) ; 
+		RTTs = RTTs - Backoffs ; 
+		Backoffs = 0 ; 
+		if (RTTs &gt; 0) {
+			slowdown(THREE_QUARTER_SSTHRESH|TCP_IDLE) ;
+			for (int i = 0 ; i &lt; RTTs ; i ++) {
+				slowdown(CWND_HALF_WITH_MIN|TCP_IDLE);
+				RTT_prev = RTT_count ; 
+				W_used = 0 ;
+			}
+		}
+	}
+	T_last = tcp_now ;
+	if (tcp_now - T_start &gt;= 2*rtt) {
+		if ((RTT_count &gt; RTT_goodcount) || (F_full == 1)) {
+			RTT_goodcount = RTT_count ; 
+			if (RTT_goodcount &lt; 1) RTT_goodcount = 1 ; 
+		}
+		RTT_prev = RTT_prev - RTT_count ;
+		RTT_count = 0 ; 
+		T_start  = tcp_now ;
+		F_full = 0;
+	}
+	if (t_seqno_ == highest_ack_ + window()) {
+		W_used = 0 ; 
+		F_full = 1 ; 
+		RTT_prev = RTT_count ;
+	}
+	else if (t_seqno_ == curseq_-1) {
+		// The sender has no more data to send.
+		int tmp = t_seqno_ - highest_ack_ ;
+		if (tmp &gt; W_used)
+			W_used = tmp ;
+		if (RTT_count - RTT_prev &gt;= 2) {
+			// The sender has been application-limited.
+			slowdown(THREE_QUARTER_SSTHRESH|TCP_IDLE) ;
+			slowdown(CLOSE_CWND_HALF_WAY|TCP_IDLE);
+			RTT_prev = RTT_count ; 
+			Backoffs ++ ; 
+			W_used = 0;
+		}
+	}
+	if (F_counting == 0) {
+		W_timed = t_seqno_  ;
+		F_counting = 1 ;
+	}
+}
+
+
+
+void TcpAgent::process_qoption_after_ack (int seqno)
+{
+	if (F_counting == 1) {
+		if (seqno &gt;= W_timed) {
+			RTT_count ++ ; 
+			F_counting = 0 ; 
+		}
+		else {
+			if (dupacks_ == numdupacks_)
+				RTT_count ++ ;
+		}
+	}
+}
+
+
+
+void TcpAgent::trace_event(char *eventtype)
+{
+	if (et_ == NULL) return;
+	int seqno = t_seqno_;
+	char *wrk = et_-&gt;buffer();
+	char *nwrk = et_-&gt;nbuffer();
+	if (wrk != 0)
+		sprintf(wrk,
+			&quot;E &quot;TIME_FORMAT&quot; &percnt;d &percnt;d TCP &percnt;s &percnt;d &percnt;d &percnt;d&quot;,
+			et_-&gt;round(Scheduler::instance().clock()),   // time
+			addr(),                       // owner (src) node id
+			daddr(),                      // dst node id
+			eventtype,                    // event type
+			fid_,                         // flow-id
+			seqno,                        // current seqno
+			int(cwnd_)                         //cong. window
+			);
+	
+	if (nwrk != 0)
+		sprintf(nwrk,
+			&quot;E -t &quot;TIME_FORMAT&quot; -o TCP -e &percnt;s -s &percnt;d.&percnt;d -d &percnt;d.&percnt;d&quot;,
+			et_-&gt;round(Scheduler::instance().clock()),   // time
+			eventtype,                    // event type
+			addr(),                       // owner (src) node id
+			port(),                       // owner (src) port id
+			daddr(),                      // dst node id
+			dport()                       // dst port id
+			);
+	et_-&gt;trace();
+}
+
+
+/*
+结论1：接收RECV和发送OUTPUT时都没有去/自对方的窗口大小通告，
+拥塞仅凭借自己的推算来进行发送端的拥塞控制，对端的通告窗口设为一个常量wnd_，
+本端发送窗口为min(cwnd_,wnd_)，范围为:  highest_ack----highest_ack+win
+
+发送窗口：从未确认的最小序号开始，如下                        
+                   1         2          3          4      
+              ----------|----------|----------|---------- 
+                     SND.UNA    SND.NXT    SND.UNA        
+                                          +SND.WND  
+
+
+结论2：有三个超时定时器
+         rtxtimer        用于重传超时
+         delsndtimer     用于随机产生延迟，模拟网络的延迟？发送端延迟？
+         burstsndtimer   ？ 用途不明，sendmuch中有一句，但程序中没有用处，
+                        它超时调用timeout，但timeout和timeout_nonrtx没有对TCP_TIMER_BURSTSND的处理
+                        可能是非tahoe的TCP协议使用
+*/
+
+/*
+F-RTO算法：
+
+    有人指出，重传定时器可能虚假超时，引起未丢失段不必要的重传[LK00, GL02,
+LM03]。在虚假的重传超时发生后，源发送段迟到的确认到达了发送方，通常会在RTO
+恢复期间触发一个不必要的整个窗口的重传。而且，在虚假重传超时后，通常TCP发送
+方处于慢启动阶段，在此期间每次收到迟到的确认时，就使拥塞窗口增加1。这使在一
+个往返时间内，大量的数据段涌入网络，从而违背了&ldquo;数据包守恒&rdquo;的原则[Jac88]。
+
+    当RTO到期后，F-RTO发送方像通常一样，重传第一个未确认段[APS99]。不同于
+通常操作的是，对于第一个超时后的到达的确认（假设该确认在窗口之前），它开始
+发送新的、当前未发送过的数据。如果在超时后到达的第二个确认在窗口之前（比如
+说：未被重传的确认数据），F-RTO发送方宣布超时是虚假的，并且退出RTO恢复。
+然而，如果两个确认的任意一个是重复ACK，就没有明显的证据表明超时是虚假超时。
+因此，此时F-RTO发送方采用传统的慢启动策略，重传未确认段。采用SACK增强版本
+的F-RTO算法，在RTO重传后收到重复ACK时，仍然可以检测出虚假超时。
+
+     算法(rfc4138)
+    
+    1)当RTO到期时，重传第一个未确认段，并设SpuriousRecovery为FALSE。同时，
+将最高的已发送序号存入变量&ldquo;recover&rdquo;中。
+    
+    2)当RTO重传后的第一个确认到达发送方，发送方按照是否该ACK在窗口之前，
+或是否该ACK为重复确认，选择下面的其中一步。
+
+          a)如果该确认是重复ACK，或是等于&ldquo;recover&rdquo;序号值的段，或是没有确
+      认第1步重传的所有数据，则转回到常规的RTO恢复过程，开始慢启动过程，并
+      重传未确认数据。切勿进入本算法的第3步。&ldquo;SpuriousRecovery&rdquo;参数保持为
+      FALSE。
+    
+          b)否则，如果该确认在窗口之前并且它小于&ldquo;recover&rdquo;值，发送两个新段
+      (前面未发送过的段)，并转入本算法的第3步。如果TCP发送方没有足够的未发送
+      数据，则只发送一个段。另外，TCP发送方可能略过Nagle算法[Nag84]，需要的
+      时候直接发送一个段。注意发送两个段符合TCP拥塞控制的要求[APS99]：F-RTO
+      的TCP发送方只需要选择不同的段发送出去。
+        
+          如果TCP发送方并没有任何新的数据发送，或通告窗口不允许发送新数据，
+      推荐操作是跳过本算法的第3步，按照常规RTO恢复算法，继续慢启动重传。然而，
+      一些处理窗口受限的替换方法可以取得更好的性能，这将在附件C中讨论。
+        
+    3)当RTO重传后的第二个确认到达发送方时，TCP发送方可以选择宣布超时是虚假的，
+    或者也可以开始重传未确认的段。
+        
+          a)如果该确认是重复确认，将拥塞窗口设置为不超过3&times;MSS，并且继续慢
+      启动策略，重传未确认的段。拥塞窗口可以设为3&times;MSS，因为在RTO超时后，已经
+      过了两个往返时间，同时常规的TCP发送方已经增加cwnd到了3。保持参数
+      SpuriousRecovery为FALSE。
+        
+          b)如果该确认在窗口之前（比如，它确认了超时后没有重传的数据），则
+      则宣布超时是虚假的，设置SpuriousRecovery为SPUR_TO，并将&ldquo;recover&rdquo;变量值
+      设为SNA.UNA（最后一个未确认的序号）。
+讨论
+
+    当重传超时后收到重复确认时，F-RTO发送方采取了谨慎的措施。因为重复确认
+表示有可能段已经丢失，由于缺乏其他信息，可靠地检测一个虚假超时是很困难的。
+因此，在这种情况下，算法谨慎地遵循了常规的TCP恢复方法。
+
+    在算法(2a)中，如果RTO重传后的第一个确认涵盖了&ldquo;recover&rdquo;点，则没有证据
+表明超时后有非重传段到达接收方。一种常见情况是，快速重传丢失，RTO超时后，
+该段又被重传,同时，在重传超时后，其他的未确认段成功地送到TCP接收端。因此，
+此时该超时不能宣布为假超时。  
+    
+    如果RTO重传后的第一个确认没有确认第1步中重传的所有数据，TCP发送方转到
+常规的RTO恢复程序。否则，不怀好意的接收方只确认部分数据，会导致发送方会在
+数据丢失时宣布虚假超时。
+
+    在算法分支(2b)中，TCP发送方允许发送两个新段，因为在常规TCP中，RTO重传
+后，当收到新的ACK，发送方将发送两个段。如果在算法分支(2b)中不能发送新段，
+或是接收窗口限制了传输，TCP发送方必须要发送数据以防止TCP停转。如果没有数据
+发送了，发送方和接收方在管道允许的范围内可能都已经发完了段，不会再有下一个
+确认到达。因此，在窗口受限的情况下，推荐转回常规的RTO慢启动重传恢复阶段。
+附件C讨论了一些可选的窗口受限情况。
+
+    如果重传超时被宣布为虚假，TCP发送方将&ldquo;recover&rdquo;变量设置为SNA.UNA，
+以允许快速重传[FHG04]。&ldquo;recover&rdquo;变量用于在NewReno TCP快速恢复期间,当RTO
+超时时，避免不必要的、成倍的快速重传。因为发送方只重传哪些触发了超时的段，
+不必要的成倍快速重传的问题不可能发生。因此，如果超时后有3个重复ACK到达了
+发送方，就表示可能丢失了包，使用快速重传以加快恢复效率。如果包丢失后没有
+足够的重复ACK到达接收方，重传定时器又会出现超时，发送方即转入算法的第1步。
+    
+    当超时被宣布为虚假时，TCP发送方不能检测到是否存在不必要的RTO重传丢失。
+原则上，RTO的重传丢失应该被视为一个拥塞信号。因此，如果在检测到虚假超时后，
+F-RTO发送方选择完全还原到拥塞控制参数，则违反拥塞控制原则的可能性较小。
+Eifel检测算法有相似的性质，其DSACK选项可以用于检测是否重传段成功地发送到
+了接收方。
+
+    F-RTO算法在TCP往返时间测算中有副作用。TCP发送方在检测到虚假超时后，
+能避免大多数不必要的重传，这使发送方能够在延迟的段上取得往返时间的采样。
+如果在不使用TCP时间戳时采用常规的RTO恢复策略，因为重传的模糊性，不会出现
+这种情况。结果是，同常规TCP比较，由于采用了F-RTO，在因为段的延迟而触发了
+虚假超时，使RTO趋向于更精确，数值更大。我们相信在那些延迟尖峰较多的网络
+中，这是一个优势。
+
+    在虚假超时后，存在F-RTO算法不能避免产生不必要重传的情况。如果包重排
+序或重复包出现在触发虚假超时的段中，由于收到的重复ACK,F-RTO算法可能不能
+检测虚假超时。另外，如果虚假超时发生在快速重传中，由于一些段在快速恢复触
+发重复ACK前发送，F-RTO算法通常不能检测虚假重传。然而，我们认为这些情况
+很少出现，注意在F-RTO没能检测到虚假超时的情况下，它采用慢启动策略，重传
+未确认段，同常规的RTO恢复方法相似。
+
+      
+拥塞算法的具体响应措施见  rfc4015
+
+*/</NUM></FTP://FTP.EE.LBL.GOV/PAPERS/CONGAVOID.PS.Z></TSS_SIZE_;></SYS/TYPES.H></MATH.H></STDLIB.H></PRE>
+<SCRIPT src="./TcpAgent详解.htm_files/gg_read2.js"></SCRIPT><BR><BR><BR><BR><BR><BR>
+<DIV id="Javascript.gg_div" class="gg_div" style="width: 728px; height: 90px; top: 8198px; left: 6px; " align="center">
+<SCRIPT type="text/javascript" src="./TcpAgent详解.htm_files/show_ads.js">
+</SCRIPT><SCRIPT src="./TcpAgent详解.htm_files/expansion_embed.js"></SCRIPT><SCRIPT src="./TcpAgent详解.htm_files/test_domain.js"></SCRIPT><SCRIPT>window.google_render_ad();</SCRIPT><INS style="display:inline-table;border:none;height:90px;margin:0;padding:0;position:relative;visibility:visible;width:728px"><INS style="display:block;border:none;height:90px;margin:0;padding:0;position:relative;visibility:visible;width:728px"><IFRAME allowtransparency="true" frameborder="0" height="90" hspace="0" id="google_ads_frame1" marginheight="0" marginwidth="0" name="google_ads_frame" scrolling="no" src="./TcpAgent详解.htm_files/ads.htm" style="left:0;position:absolute;top:0" vspace="0" width="728"></IFRAME></INS></INS>
+<BR>
+<SCRIPT src="./TcpAgent详解.htm_files/stat.php" language="JavaScript" charset="gb2312"></SCRIPT><A href="http://www.cnzz.com/stat/website.php?web_id=1236358" target="_blank" title="站长统计"><IMG border="0" hspace="0" vspace="0" src="./TcpAgent详解.htm_files/pic.gif"></A><IMG src="./TcpAgent详解.htm_files/stat.htm" border="0" width="0" height="0">
+
+</DIV></FORM></BODY></HTML>
